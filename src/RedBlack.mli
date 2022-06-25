@@ -4,7 +4,7 @@
    Setting. J. Funct. Program. 9(4): 471-477 (1999)
 
    Adaptation of :
-   Kimball Germane and Matthiew Might, Deletion : The curse of the Red-Black Tree
+   Kimball Germane and Matthew Might, Deletion : The curse of the Red-Black Tree
    Setting. J. Funct. Program. 24 (4): 423–433, 2014.
    To work with a red black tree
 
