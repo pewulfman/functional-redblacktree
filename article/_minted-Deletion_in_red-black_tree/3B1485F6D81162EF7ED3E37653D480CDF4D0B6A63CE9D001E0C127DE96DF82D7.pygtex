@@ -1,0 +1,18 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{let} \PYG{n}{balance\PYGZus{}left} \PYG{n}{colour} \PYG{o}{(}\PYG{n}{left}\PYG{o}{,} \PYG{n}{is\PYGZus{}shorter}\PYG{o}{)} \PYG{k}{value} \PYG{n}{right} \PYG{o}{=}
+    \PYG{k}{if} \PYG{n}{is\PYGZus{}shorter} \PYG{k}{then}
+        \PYG{k}{match} \PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{k}{value}\PYG{o}{,} \PYG{n}{right} \PYG{k}{with}
+        \PYG{c}{(* fig 4 *)}
+        \PYG{o}{|} \PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n}{c}\PYG{o}{),} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n}{balance} \PYG{n+nc}{Black} \PYG{n}{c} \PYG{n}{z} \PYG{o}{(}\PYG{n}{redden} \PYG{n}{d}\PYG{o}{)),}\PYG{n+nb+bp}{false}
+        \PYG{c}{(* fig. 5 *)}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n}{c}\PYG{o}{),} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{))}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{k}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)),}\PYG{n+nb+bp}{false}
+        \PYG{c}{(* fig 6*)}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)),}\PYG{n}{k}\PYG{o}{=}\PYG{n+nc}{Black}
+        \PYG{o}{|} \PYG{o}{\PYGZus{}} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{failwith} \PYG{l+s+s2}{\PYGZdq{}Impossible cases by red property, or property b\PYGZdq{}}
+    \PYG{k}{else}
+        \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{k}{value}\PYG{o}{,} \PYG{n}{right}\PYG{o}{),} \PYG{n+nb+bp}{false}
+\end{Verbatim}

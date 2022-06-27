@@ -19,3 +19,5 @@ in my honest opinion.
 Feel free to use the OCaml implementation as is, and to read the rest of the file to implement your own.
 
 ## Description of the Algorithm
+
+see [pdf](./article/Deletion_in_red-black_tree.pdf)

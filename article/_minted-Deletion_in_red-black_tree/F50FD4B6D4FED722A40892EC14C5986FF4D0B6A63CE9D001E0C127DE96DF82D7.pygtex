@@ -1,0 +1,59 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{let} \PYG{n}{balance\PYGZus{}left} \PYG{n}{colour} \PYG{o}{(}\PYG{n}{left}\PYG{o}{,} \PYG{n}{is\PYGZus{}shorter}\PYG{o}{)} \PYG{k}{value} \PYG{n}{right} \PYG{o}{=}
+    \PYG{k}{if} \PYG{n}{is\PYGZus{}shorter} \PYG{k}{then}
+        \PYG{k}{match} \PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{k}{value}\PYG{o}{,} \PYG{n}{right} \PYG{k}{with}
+        \PYG{c}{(* fig *)}
+        \PYG{o}{|} \PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n}{c}\PYG{o}{),} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n}{balance} \PYG{n+nc}{Black} \PYG{n}{c} \PYG{n}{z} \PYG{o}{(}\PYG{n}{redden} \PYG{n}{d}\PYG{o}{)),}\PYG{n+nb+bp}{false}
+        \PYG{c}{(* fig.  *)}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n}{c}\PYG{o}{),} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{))}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{k}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)),}\PYG{n+nb+bp}{false}
+        \PYG{c}{(* fig *)}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)),}\PYG{n}{k}\PYG{o}{=}\PYG{n+nc}{Black}
+        \PYG{o}{|} \PYG{o}{\PYGZus{}} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{failwith} \PYG{l+s+s2}{\PYGZdq{}Impossible cases by red property, or property b\PYGZdq{}}
+    \PYG{k}{else}
+        \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{k}{value}\PYG{o}{,} \PYG{n}{right}\PYG{o}{),} \PYG{n+nb+bp}{false}
+\PYG{k}{let} \PYG{n}{balance\PYGZus{}right} \PYG{n}{colour} \PYG{n}{left} \PYG{k}{value} \PYG{o}{(}\PYG{n}{right}\PYG{o}{,}\PYG{n}{is\PYGZus{}shorter}\PYG{o}{)} \PYG{o}{=}
+   \PYG{c}{(* complemaentary as the above *)}
+   \PYG{k}{if} \PYG{n}{is\PYGZus{}shorter} \PYG{k}{then}
+       \PYG{k}{match} \PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{k}{value}\PYG{o}{,} \PYG{n}{right} \PYG{k}{with}
+        \PYG{o}{|} \PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n}{c}\PYG{o}{)),} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{balance} \PYG{n+nc}{Black} \PYG{o}{(}\PYG{n}{redden} \PYG{n}{a}\PYG{o}{)} \PYG{n}{x} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)),}\PYG{n+nb+bp}{false}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n}{c}\PYG{o}{),} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{b}\PYG{o}{,} \PYG{n}{y}\PYG{o}{,} \PYG{n}{c}\PYG{o}{)),} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{k}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{c}\PYG{o}{,} \PYG{n}{z}\PYG{o}{,} \PYG{n}{d}\PYG{o}{)),}\PYG{n+nb+bp}{false}
+        \PYG{o}{|} \PYG{n}{k}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n}{z}
+          \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{a}\PYG{o}{,} \PYG{n}{x}\PYG{o}{,} \PYG{n}{b}\PYG{o}{),} \PYG{n}{y}\PYG{o}{,} \PYG{n}{z}\PYG{o}{),}\PYG{n}{k}\PYG{o}{=}\PYG{n+nc}{Black}
+        \PYG{o}{|} \PYG{o}{\PYGZus{}} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{failwith} \PYG{l+s+s2}{\PYGZdq{}Impossible cases by red property, or property b\PYGZdq{}}
+    \PYG{k}{else}
+        \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{k}{value}\PYG{o}{,} \PYG{n}{right}\PYG{o}{),} \PYG{n+nb+bp}{false}
+
+\PYG{k}{let} \PYG{n}{delete} \PYG{n}{cmp} \PYG{n}{elt} \PYG{n}{tree} \PYG{o}{=}
+    \PYG{k}{let} \PYG{k}{rec} \PYG{n}{del} \PYG{o}{=} \PYG{k}{function}
+        \PYG{n+nc}{L} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{k}{raise} \PYG{n+nc}{Not\PYGZus{}found}
+      \PYG{o}{|} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{n}{root} \PYG{o}{,}\PYG{n}{right}\PYG{o}{)} \PYG{o}{\PYGZhy{}\PYGZgt{}}
+        \PYG{k}{let} \PYG{n}{c} \PYG{o}{=} \PYG{n}{cmp} \PYG{n}{elt} \PYG{n}{root} \PYG{k}{in}
+        \PYG{k}{if} \PYG{n}{c} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0} \PYG{k}{then} \PYG{n}{balance\PYGZus{}left} \PYG{n}{colour} \PYG{o}{(}\PYG{n}{del} \PYG{n}{left}\PYG{o}{)} \PYG{n}{root} \PYG{n}{right}
+        \PYG{k}{else} \PYG{k}{if} \PYG{n}{c} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0} \PYG{k}{then} \PYG{n}{balance\PYGZus{}right} \PYG{n}{colour} \PYG{n}{left} \PYG{n}{root} \PYG{o}{(}\PYG{n}{del} \PYG{n}{right}\PYG{o}{)}
+        \PYG{k}{else} \PYG{n}{remove} \PYG{n}{colour} \PYG{n}{left} \PYG{n}{right}
+  \PYG{o+ow}{and} \PYG{n}{remove} \PYG{n}{c} \PYG{n}{l} \PYG{n}{r} \PYG{o}{=} \PYG{k}{match} \PYG{n}{c}\PYG{o}{,}\PYG{n}{l}\PYG{o}{,}\PYG{n}{r} \PYG{k}{with}
+    \PYG{c}{(* Remove a leaf *)}
+    \PYG{o}{|} \PYG{n+nc}{Red}  \PYG{o}{,} \PYG{n+nc}{L}\PYG{o}{,} \PYG{n+nc}{L} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{L}\PYG{o}{,} \PYG{n+nb+bp}{false}
+    \PYG{o}{|} \PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{L}\PYG{o}{,} \PYG{n+nc}{L} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{L}\PYG{o}{,} \PYG{n+nb+bp}{true}
+    \PYG{c}{(* Only one child implies the child is red and the parent is black *)}
+    \PYG{o}{|} \PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{l}\PYG{o}{,} \PYG{n}{v}\PYG{o}{,} \PYG{n}{r}\PYG{o}{),} \PYG{n+nc}{L}\PYG{o}{)}
+    \PYG{o}{|} \PYG{n+nc}{Black}\PYG{o}{,} \PYG{n+nc}{L}\PYG{o}{,} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n}{l}\PYG{o}{,} \PYG{n}{v}\PYG{o}{,} \PYG{n}{r}\PYG{o}{))} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Black}\PYG{o}{,} \PYG{n}{l}\PYG{o}{,} \PYG{n}{v}\PYG{o}{,} \PYG{n}{r}\PYG{o}{),} \PYG{n+nb+bp}{false}
+    \PYG{c}{(* Two sub\PYGZhy{}trees*)}
+    \PYG{o}{|} \PYG{n}{c}\PYG{o}{,} \PYG{n+nc}{T}\PYG{o}{(}\PYG{n}{c\PYGZsq{}}\PYG{o}{,}\PYG{n}{l\PYGZsq{}}\PYG{o}{,}\PYG{n}{v\PYGZsq{}}\PYG{o}{,}\PYG{n}{r\PYGZsq{}}\PYG{o}{),} \PYG{n}{r} \PYG{o}{\PYGZhy{}\PYGZgt{}}
+      \PYG{k}{let} \PYG{n}{v}\PYG{o}{,} \PYG{n}{l} \PYG{o}{=} \PYG{n}{remove\PYGZus{}rightmost} \PYG{n}{c\PYGZsq{}} \PYG{n}{l\PYGZsq{}} \PYG{n}{v\PYGZsq{}} \PYG{n}{r\PYGZsq{}} \PYG{k}{in}
+           \PYG{n}{balance\PYGZus{}left} \PYG{n}{c} \PYG{n}{l} \PYG{n}{v} \PYG{n}{r}
+  \PYG{o+ow}{and} \PYG{n}{remove\PYGZus{}rightmost} \PYG{n}{c} \PYG{n}{l} \PYG{n}{v} \PYG{o}{=} \PYG{k}{function}
+      \PYG{n+nc}{L} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{v}\PYG{o}{,} \PYG{n}{remove} \PYG{n}{c} \PYG{n}{l} \PYG{n+nc}{L}
+    \PYG{o}{|} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{c\PYGZsq{}}\PYG{o}{,} \PYG{n}{l\PYGZsq{}}\PYG{o}{,} \PYG{n}{v\PYGZsq{}}\PYG{o}{,} \PYG{n}{r\PYGZsq{}}\PYG{o}{)} \PYG{o}{\PYGZhy{}\PYGZgt{}}
+      \PYG{k}{let} \PYG{n}{rightmost\PYGZus{}value}\PYG{o}{,} \PYG{n}{r} \PYG{o}{=} \PYG{n}{remove\PYGZus{}rightmost} \PYG{n}{c\PYGZsq{}} \PYG{n}{l\PYGZsq{}} \PYG{n}{v\PYGZsq{}} \PYG{n}{r\PYGZsq{}}
+      \PYG{n}{rightmost\PYGZus{}value}\PYG{o}{,} \PYG{n}{balance\PYGZus{}right} \PYG{n}{c} \PYG{n}{l} \PYG{n}{v} \PYG{n}{r}
+  \PYG{c}{(* Discard the boolean *)}
+  \PYG{k}{in} \PYG{n}{fst} \PYG{o}{(}\PYG{n}{del} \PYG{n}{tree}\PYG{o}{)}
+\end{Verbatim}

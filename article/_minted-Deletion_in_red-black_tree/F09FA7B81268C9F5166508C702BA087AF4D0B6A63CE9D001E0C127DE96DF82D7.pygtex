@@ -1,0 +1,19 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{let} \PYG{n}{delete} \PYG{n}{cmp} \PYG{n}{elt} \PYG{n}{tree} \PYG{o}{=}
+    \PYG{k}{let} \PYG{k}{rec} \PYG{n}{del} \PYG{o}{=} \PYG{k}{function}
+        \PYG{n+nc}{L} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{k}{raise} \PYG{n+nc}{Not\PYGZus{}found}
+      \PYG{o}{|} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{left}\PYG{o}{,} \PYG{n}{root} \PYG{o}{,}\PYG{n}{right}\PYG{o}{)} \PYG{o}{\PYGZhy{}\PYGZgt{}}
+        \PYG{k}{let} \PYG{n}{c} \PYG{o}{=} \PYG{n}{cmp} \PYG{n}{elt} \PYG{n}{root} \PYG{k}{in}
+        \PYG{k}{if} \PYG{n}{c} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0} \PYG{k}{then} \PYG{o}{(}\PYG{n}{del} \PYG{n}{left}\PYG{o}{)} \PYG{n}{root} \PYG{n}{right}
+        \PYG{k}{else} \PYG{k}{if} \PYG{n}{c} \PYG{o}{\PYGZgt{}} \PYG{l+m+mi}{0} \PYG{k}{then} \PYG{n}{left} \PYG{n}{root} \PYG{o}{(}\PYG{n}{del} \PYG{n}{right}\PYG{o}{)}
+        \PYG{k}{else} \PYG{n}{remove} \PYG{n}{left} \PYG{n}{right}
+    \PYG{o+ow}{and} \PYG{n}{remove} \PYG{n}{l} \PYG{n}{r} \PYG{o}{=} \PYG{k}{match} \PYG{n}{l}\PYG{o}{,}\PYG{n}{r} \PYG{k}{with}
+        \PYG{n}{left}\PYG{o}{,} \PYG{n+nc}{L}  \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{left}
+      \PYG{o}{|} \PYG{n+nc}{L}\PYG{o}{,} \PYG{n}{right} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{right}
+      \PYG{o}{|} \PYG{n+nc}{T}\PYG{o}{(}\PYG{n}{l}\PYG{o}{,}\PYG{n}{v}\PYG{o}{,}\PYG{n}{r}\PYG{o}{),} \PYG{n}{right} \PYG{o}{\PYGZhy{}\PYGZgt{}}
+        \PYG{k}{let} \PYG{n}{v\PYGZsq{}}\PYG{o}{,} \PYG{n}{l\PYGZsq{}} \PYG{o}{=} \PYG{n}{remove\PYGZus{}rightmost} \PYG{n}{l} \PYG{n}{v} \PYG{n}{r} \PYG{k}{in}
+        \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{l\PYGZsq{}}\PYG{o}{,} \PYG{n}{v\PYGZsq{}}\PYG{o}{,} \PYG{n}{right}\PYG{o}{)}
+    \PYG{o+ow}{and} \PYG{n}{remove\PYGZus{}rightmost} \PYG{n}{left} \PYG{k}{value} \PYG{o}{=} \PYG{k}{function}
+        \PYG{n+nc}{L} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{k}{value}\PYG{o}{,} \PYG{n}{left}
+      \PYG{o}{|} \PYG{n+nc}{T}\PYG{o}{(}\PYG{n}{l}\PYG{o}{,}\PYG{n}{v}\PYG{o}{,}\PYG{n}{r}\PYG{o}{)} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{left}\PYG{o}{,}\PYG{k}{value}\PYG{o}{,} \PYG{n}{remove\PYGZus{}rightmost} \PYG{n}{l} \PYG{n}{v} \PYG{n}{r}\PYG{o}{)}
+\end{Verbatim}

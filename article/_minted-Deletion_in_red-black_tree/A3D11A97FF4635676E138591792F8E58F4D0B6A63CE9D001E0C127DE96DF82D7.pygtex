@@ -1,0 +1,13 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{let} \PYG{n}{insert} \PYG{n}{cmp} \PYG{n}{elt} \PYG{n}{tree} \PYG{o}{=}
+    \PYG{k}{let} \PYG{k}{rec} \PYG{n}{ins} \PYG{o}{=} \PYG{k}{function}
+        \PYG{n+nc}{L} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n+nc}{Red}\PYG{o}{,} \PYG{n+nc}{L}\PYG{o}{,} \PYG{n}{elt}\PYG{o}{,} \PYG{n+nc}{L}\PYG{o}{)}
+      \PYG{o}{|} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{n}{root}\PYG{o}{,} \PYG{n}{right}\PYG{o}{)} \PYG{o}{\PYGZhy{}\PYGZgt{}}
+         \PYG{k}{let} \PYG{n}{diff} \PYG{o}{=} \PYG{n}{cmp} \PYG{n}{elt} \PYG{n}{root} \PYG{k}{in}
+         \PYG{k}{if} \PYG{n}{diff} \PYG{o}{=} \PYG{l+m+mi}{0} \PYG{k}{then} \PYG{n+nc}{T} \PYG{o}{(}\PYG{n}{colour}\PYG{o}{,} \PYG{n}{left}\PYG{o}{,} \PYG{n}{root}\PYG{o}{,} \PYG{n}{right}\PYG{o}{)}
+         \PYG{k}{else} \PYG{k}{if} \PYG{n}{diff} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{0} \PYG{k}{then}
+            \PYG{n}{balance} \PYG{n}{colour} \PYG{o}{(}\PYG{n}{ins} \PYG{n}{left}\PYG{o}{)} \PYG{n}{root} \PYG{n}{right}
+         \PYG{k}{else}
+            \PYG{n}{balance} \PYG{n}{colour} \PYG{n}{left} \PYG{n}{root} \PYG{o}{(}\PYG{n}{ins} \PYG{n}{right}\PYG{o}{)}
+    \PYG{k}{in} \PYG{n}{blacken} \PYG{o}{(}\PYG{n}{ins} \PYG{n}{tree}\PYG{o}{)}
+\end{Verbatim}
