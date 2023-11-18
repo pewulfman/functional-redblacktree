@@ -44,48 +44,60 @@
 
 \section*{Abstract}
 
-Chris Okasaki showed how to implement red-black trees in a functional programing language, but his implementation missed an important function : the deletion of a node from the red-black tree.
-Matt Might then showed how we can perform such algorithm at the cost of adding two colors to our red-black tree.
-Other works by Ralf Hinze and Stefan Khars, showed how to implement such tree with deletion using higher-order datatypes.
-In this paper, we will show how to implement the deletion algorithm in a functional language, using only simple datatypes without adding extra colors.
+Chris Okasaki showed how to implement red-black trees in a functional programming language~\cite{okasaki_1999}, but his implementation missed an important function : the deletion of a node from the red-black tree.
+Late work by Matt Might proposed an algorithm for deletion which required adding two colors to our red-black tree~\cite{germane_might_2014}, thus changing our data structure and adapting all algorithm.
+Other works by Ralf Hinze and Stefan Khars~\cite{kahrs_2001}, showed how to implement such tree with deletion by combining phantom types, existential types, and nested datatypes.
+In this paper, we will show how to implement the deletion algorithm for the standard red-black tree in a functional setting, using only simple datatypes without adding extra colors.
+By removing these extra requirements, this algorithm can be implemented in language that doesn't support such advanced type system and can be easily adapted to other languages.
+This algorithm is inspired by Okasaki's insertion algorithm and is proved correct using the Coq proof assistant.
 
 \section{Introduction}
 
-Red-black trees are a kind of self-balancing binary search trees, with additional properties over simple BST that makes it impossible for them to degenerate into comb and thus guarentie the performance of look-up, insertions and deletion in the worst case.
+Red-black trees are a kind of self-balancing binary search trees (BST),
+with additional properties over simple BST that makes it impossible for them to degenerate into combs
+and thus guaranties the performance of look-ups, insertions and deletions in the worst case.
 
-They ensure the balance of the tree in there structure by adding a color bit to each node and by enforcing the following properties :
+
+In a red-black tree, each node has an additional color bit (red or black), and the relative balance
+of the tree is achieved by enforcing the following properties :
 \begin{enumerate}
 \item Each node is either red or black.
 \item The root is black
 \item All leaves are black
 \item A Red node cannot have red child
-\item Every path fom a given node to any of its leaves goes through the same number of black nodes. (this number is refered as the black height of the subtree at the node)
+\item Every path from a given node to any of its leaves goes through the same number of black nodes. (this number is referred as the black height of the subtree at the node)
 \end{enumerate}
 
-The last two , that we will refer as the red property and the black property, imply that at every node the height of the higher subtree emerging from its child is at most twice the one emerging to its other child. Thus, it ensure that there is at worst a factor two between the deepest leaf and the other leaf, keeping it sufficiently balance to guaranty the algorithmic performance (log (n)).
+The last two, that we will refer as the red property and the black property, imply that at every node the higher subtree emerging from its children is at most twice as high as the other subtree. Thus, it ensures that there is at worst a factor two between the deepest leaf and the other leaf, keeping it sufficiently balance to guaranty the algorithmic performance (log (n)).
 
 
-While the first three properties are easily enforce in the definition of the datatypes. The standard BFS insertion and deletion algorithm break both black and red property. These algorithm has to be modified in order to restore such property. While this was done a while back for imperative data-structure, adapting these algorithms for persistent data-structure in a purely functional setting has been quite challenging. The insertion algorithm has been presented in [ref to Okasaki's] in 1999 and is now widely used.
-
+While the first three properties are easily enforced in the definition of the datatype. The standard BFS insertion and deletion algorithm break both black and red property.
+In order to preserve those invariant, the equivalent algorithms for red-black trees need to add extra step of rotation and recoloring.
+The imperative version of the algorithm was first presented by Guibas and Sedgewick in 1978~\cite{guibas_1978} and the purely functional version by Chris Okasaki in 1999~\cite{okasaki_1999}.
 
 Oksaki adapted the insertion like this :
 \begin{codeblock}
 let insert cmp elt tree =
     let rec ins = function
         L -> T (Red, L, elt, L)
-      | T (colour, left, root, right) ->
+      | T (color, left, root, right) ->
          let diff = cmp elt root in
-         if diff = 0 then T (colour, left, root, right)
+         if diff = 0 then T (color, left, root, right)
          else if diff < 0 then
-            balance colour (ins left) root right
+            balance color (ins left) root right
          else
-            balance colour left root (ins right)
+            balance color left root (ins right)
     in blacken (ins tree)
 \end{codeblock}
 
-As in BST, the new node is inserted at the leaf. The inserted node is always red, which preserve the black property but may break the red property which need to be restored. For this reasons, Okasaki added a balance operation along the insertion path to restore the red porperty. This balance operation uses the rotation depicted in fig~\ref{fig:okasaki} to take care of a red child followed by a red grand-child. (Notice that this cas appear only along the insertion path so not on both child at the same time). This rotation put a red node at the top of the subtree which was previously black by construction. This may also break the red property which will be restore again by the call to the balance function. Sometime this will lead to the root to be turn red. The algorithm finish by turning the root node black which does nothing if already black or increase the black height of the tree and restore the 2 property if it was red.
+As in BST, the new node is inserted at the leaf.
+The inserted node is always red, which preserve the black invariant but breaks the red one if inserted as a chield of a red noe.
+For this reasons, Okasaki added a balance operation along the insertion path to restore the red porperty. This balance operation uses the rotation depicted in fig~\ref{fig:okasaki} to take care of a red child followed by a red grand-child. (Notice that this case appear only along the insertion path so not on both child at the same time).
+This rotation put a red node at the top of the subtree which was previously black by construction.
+This recoloring can also lead to a double red node, which is solved by recurrence, applying the same rotation while rewinding the insertion path until there is no more double red nodes or we eventualy reach the root.
+Sometime this will lead the root to be turned red. In this case, we simply repaint it black to restore the second property.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{center}
 \hfill
  \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
@@ -158,27 +170,29 @@ As in BST, the new node is inserted at the leaf. The inserted node is always red
 \end{center}
 \end{figure}
 
-Okasaki balance algorithm is presented here :
+Okasaki's balance algorithm is presented here :
 
 \begin{codeblock}
-let balance colour left root right =
-    match colour, left, root, right with
+let balance color left root right =
+    match color, left, root, right with
         Black, T (Red, T (Red, a, x, b), y, c), z, d
       | Black, T (Red, a, x, T (Red, b, y, c)), z, d
       | Black, a, x, T (Red, T (Red, b, y, c), z, d
       | Black, a, x, T (Red, b, y, T (Red, c, z, d)) ->
           T (Red, T (Black, a, x, b), y, T (Black, c, z, d))
       | _ ->
-          T (colour, left, root, right)
+          T (color, left, root, right)
 \end{codeblock}
 
 To sum up, the insertion algorithm break the red property and Okasaki proposed the balance algorithm that restore it.
 
+Similarly, the deletion algorithm may lead to the deletion of a black node which break the black property. But Okasaki's paper did not provide a functional deletion algorithm.
 
-Similarly, the deletion algorithm may lead to the deletion of a black node which break the black property. In 2104 Might's find a way to avoid this issue by adding a third color, a double black color, which count as two black node for the count of the black height. With this new color, he is able to never break the black property during deletion, instead he break the first property which he later restore. While correct, this solutions has drawbacks, even called "a curse" in the article's title, that is two added color and added leaf node, a modification of Okasaki's balance algorithms, and a complex deletion algorithm.
+In 2104, Might proposed a deletion algorithm that never break the black invariant. He achieved this by adding a third color, a double black color, which count as two black nodes for the count of the black height.
+With this new color, deleting a black node trigger an "increase" of the color of the root node, hence the black height stay the same, but it breaks the first property of a red-black tree, which is later restore using different balancing technique.
+While correct, this solution has drawbacks, coined "a curse" in the article's title, that is two added color and one added leaf node, a modification of Okasaki's balance algorithms, and an arguably complex deletion algorithm.
 
-
-In this article we will instead present an algorithm that restore the black property during deletion without using extra colours, then breaking the "curse" of an added color.
+In this article we will present an algorithm that restore the black invariant during deletion without the addition of extra colors, thus breaking the "curse".
 
 \section{Deletion}
 
@@ -205,11 +219,11 @@ let delete cmp elt tree =
 
 
 We took a similar approach than Okasaki's by first adapting the BST standard deletion by adding a call to a balance function that will restore the black property if it is broken.
-To do so, this balance function needs to be provided with information on "how" the property was broken.
-In the case of Okasaki's insertion, this information is present in the color of the node, but in the case of deletion, we can't get the information on the reduction of the blackheight from the local coloring of the node.
-Instead, the information will be provide by the algorihtm itself.
-The information that we need is wither the deletion appeared in the left or right subtree, that we get from the chain of calls and if the deletion reduce the blackheight (by 1) or not, and we will get the information from our remove function
-Of course the balancing is symetric but different if the deletion is in the left or right subtree, so we split the balancing between \code{balance_right} and \code{balance_left}, to simplify the algorithm.
+To do so, this balance function needs to be provided with the information on "how" the property was broken (i.e. if one subtree is shorter and which one)
+In the case of Okasaki's insertion, this information is present local from the color of the node, its children and grand-children. In the case of deletion, we can't get this information on the reduction of the black height just by looking at the top of the subtree.
+We could compute the black eight of both subtrees, but this would degrade the performance of the algorithm.
+Instead, this information is dispatched through the structure of the algorithm itself.
+The information that we need is whether the deletion appeared in the left or right subtree, that we get from the chain of calls and if the deletion reduce the black height (by 1) or not, and we will get this information from our remove function
 
 
 This lead to the following \code{delete} function :
@@ -217,20 +231,26 @@ This lead to the following \code{delete} function :
 let delete cmp elt tree =
     let rec del = function
         L -> raise Not_found
-      | T (colour, left, root ,right) ->
+      | T (color, left, root ,right) ->
         let c = cmp elt root in
-        if c < 0 then balance_left colour (del left) root right
-        else if c > 0 then balance_right colour left root (del right)
-        else remove colour left right
+        if c < 0 then balance_left color (del left) root right
+        else if c > 0 then balance_right color left root (del right)
+        else remove color left right
      ...
 \end{codeblock}
 
-The \code{remove} function also need to be modify, to take the colour as input and to return, along with the new subtree, a boolean set to true is the tree is shorter after deletion.
-For this function, we discriminate between three cases. Either the node has two leaf childs, in this case, it is replace by a leaf (fig.~\ref{fig:no-child}), which decrease the blackheight if the node was black.
-Either it has one exactly one leaf child, then by construction, the other child is a red node with two leaf childs, and the node to remove is black. In this cases, we replace the node to remove by its child, repainted black (fig. 3) and the length doesn't change.
-In the last case the node has two non leaf children. We replace the value with the inorder predecessor (or sucessor) and then remove this other node, which only has one child as the rightmost (resp. leftmost) value of a tree. Since we perform a deletion in the left of right subtree, we have to add a balance function after removal.
+The \code{remove} function also need to be modified, to take the color as input and to return, along with the new subtree, a boolean set to true if the tree is shorter after deletion.
+For this function, we discriminate between three cases on the node to remove.
 
-\begin{figure}[h]
+\begin{enumerate}
+  \item The node has two leaf children, in this case, it is replaced by a leaf (fig.~\ref{fig:no-child}), which decrease the black height if the node was black.
+  \item The node has exactly one leaf child, then by construction, the other child is a red node with two leaf children, and the node to remove is black. In this case, we replace the node to remove by its child, repainted black (fig. 3) and the black height doesn't change.
+  \item In the last case the node has two non leaf children. We replace the value with the in-order predecessor (or successor) and then remove this other node, which has at most one child as the rightmost (resp. leftmost) value of a tree, so we end up with one of the previous cases.
+\end{enumerate}
+
+Since the deletion in the left of right subtree can reduce the black height and thus break the black property, we have to add a balance function in the algorithm to restore it.
+
+\begin{figure}[ht]
 \begin{center}
 \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
 {\TCircle{x}}{
@@ -249,7 +269,7 @@ In the last case the node has two non leaf children. We replace the value with t
 \end{center}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{center}
 \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
 {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
@@ -298,13 +318,14 @@ This algorithm is shown here:
 Let's now take a look at the \code{balance_left} function. This function receives a node after the delete function was called on the left subtree.
 If the left subtree has the same black height as before, the \code{balance_left} function simply reconstitute the node. If the left subtree is shorter, then we need to rotate the tree so that the black property is restored at this node.
 Let looks at the cases that we might have when the subtree is shorter.
-Let assume that the left child is red, then we can repaint it black and the problem is solved. In fact, the remove function should have done this already and return the child repainted black and false instead.
-Thus we will assume that the left child is black. (property a)
-Also, because the blackheight of a the tree is at least 1, and was reduce by one, the blackheight of the subtree at the right child, left's sibling, is at least 2, by construction. (property b)
+Let assume that the left child is red, then we can repaint it black, and the problem is solved. In fact, the remove function should have done this already and return the child repainted black and false instead.
+Thus, we will assume that the left child is black. (property a)
+Also, because the black height of a tree is at least 1, and was reduced by one, the black height of the subtree at the right child, left's sibling, is at least 2, by construction. (property b)
 
-The first case is when the sibling is red (fig. 4). Then the root is black (red property) and the sibling has two black children that are non-leaf (property b). If we name the left node a, the first child's children b and c and the other child d. We notice that a,b and c have the same black height which is one less than d. Then with a left rotation at the sibling node, we put a,b,c and d at the same height in the tree. By colouring the sibling black and d red, we restore the black property but we may break the red property. For this reason we have to call Okasaki's balance function on the right sibling restoring the red property at the sibling subtree and keeping the black property intact.
+The first case is when the sibling is red (fig. 4). Then the root is black (red property) and the sibling has two black children that are non-leaf (property b). If we name the left node (a), the first child's children (b) and (c) and the other child (d). We notice that (a), (b), and (c) have the same black height which is one less than (d).
+Then with a left rotation at the sibling node, we put (a), (b), (c), and (d) at the same height in the tree. By coloring the sibling black and (d) red, we restore the black property, but we may break the red property. For this reason, we have to call Okasaki's balance function on the right sibling restoring the red property at the sibling subtree and keeping the black property intact.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{center}
 \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
 {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
@@ -339,10 +360,12 @@ The first case is when the sibling is red (fig. 4). Then the root is black (red 
 \end{figure}
 
 
-The second case is when the sibling is black and has at least one red child (fig. 5). Still naming a the left node and b,c,d the red child's children and the other sibling's child, in this order. a,b,c and d have the same black height. Similarly a left rotation at the right sibling (or a right rotation if the red child is at the right) and coloring the red child black fix the black property.
+The second case is when the sibling is black and has at least one red child (fig. 5). Still naming (a) the left node and (b), (c), (d) the red child's children and the other sibling's child, in this order.
+(a), (b), (c), and (d) have the same black height.
+Similarly, a left rotation at the right sibling (or a right rotation if the red child is at the right) and coloring the red child black fix the black property.
 
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{center}
 \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
 {\TCircle{x}}{
@@ -391,9 +414,15 @@ or
 \end{figure}
 
 
-The last case which is the easiest one is when the sibling is black and has two black children (fig. 6) . Because both children are black we can paint the right child red and restore the black property localy. Then if the root is red, we paint it black to restore the black property globaly, otherwise we are force to decrease the size of the subtree and pass back this information. This algorithm will be call again on the root parent to try to restore the black property again. This may be push up to the root of the tree which will lead to the black height of the whole tree to be reduce by one, in the same way it is incease by one during Oksaki's insertion.
+The last case and the easiest one is when the sibling is black and has two black children (fig. 6).
+Because both children are black we can paint the right child red and restore the black property locally.
+This lead to the black height of the whole subtree to be reduced by one.
+Then, If the root is red, we paint it black, which increase the black eight and restore the black property globally.
+In the other case, we live the tree as is and propagate the information to the function caller.
+When unpiling the call stack, the balancing will be performed by recurrence until the black invariant is restored,
+or we eventually reach the root.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \begin{center}
 \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
 {\TCircle{y}}{
@@ -425,9 +454,9 @@ The last case which is the easiest one is when the sibling is black and has two 
 The code of the \code{balance_left} function is presented here
 
 \begin{codeblock}
-let balance_left colour (left, is_shorter) value right =
+let balance_left color (left, is_shorter) value right =
     if is_shorter then
-        match colour, left, value, right with
+        match color, left, value, right with
         (* fig 4 *)
         | Black, a, x, T (Red, T (Black, b, y, c), z, d)
           -> T (Black, T (Black, a, x, b), y, balance Black c z (redden d)),false
@@ -440,28 +469,39 @@ let balance_left colour (left, is_shorter) value right =
           -> T (Black, x, y, T (Red, c, z, d)),k=Black
         | _ -> failwith "Impossible cases by red property, or property b"
     else
-        T (colour, left, value, right), false
+        T (color, left, value, right), false
 \end{codeblock}
- the full code of the delete function is given in appendix~\ref{sec:ann1}. the \code{balance_right} is the same as \code{balance_left} with left and right siblings reversed.
+the full code of the delete function is given in appendix~\ref{sec:ann1}.
 
-\section{Benchmark}
+The \code{balance_right} is the symmetric as \code{balance_left} with left and right siblings inverted.
+
+\section {Formal Proof}
 
 \section{Conclusion}
 
-In essence, the algorithm presented here is the same as Might's deletion algorithm. However, his choice to encode the information for rebalancing directly in the data-structure, as a new double-black color, leads to several drawback and possible misinterpretation and understanding, which are all avoided in our implementation. For this reason we believe that our implementation should be preferred.
+In essence, the algorithm presented here is the very similar as Might's deletion algorithm.
+In this previous algorithm, the author used extra colors which as the effect to transform the problem of a global property being broken into a local property being broken.
+Which allowed him to solve the problem similarly as in the insertion algorithm.
+We notice that the relevant effect of the added color was to store the information on the reduction of the black height in the tree, which can be done in a simpler way by using the call stack.
+This new implementation avoids the several drawbacks, and possible misinterpretation and understanding, of Might's algorithm.
+For these reasons, we believe that our implementation should be preferred.
+
+%bibliography
+\bibliography{Deletion_in_red-black_tree}{}
+\bibliographystyle{plain}
 
 \newpage
 
-%annexe
+%annexes
 \appendix
 
 \section{Code of delete function}
 \label{sec:ann1}
 
 \begin{codeblock}
-let balance_left colour (left, is_shorter) value right =
+let balance_left color (left, is_shorter) value right =
     if is_shorter then
-        match colour, left, value, right with
+        match color, left, value, right with
         (* fig *)
         | Black, a, x, T (Red, T (Black, b, y, c), z, d)
           -> T (Black, T (Black, a, x, b), y, balance Black c z (redden d)),false
@@ -474,11 +514,11 @@ let balance_left colour (left, is_shorter) value right =
           -> T (Black, x, y, T (Red, c, z, d)),k=Black
         | _ -> failwith "Impossible cases by red property, or property b"
     else
-        T (colour, left, value, right), false
-let balance_right colour left value (right,is_shorter) =
+        T (color, left, value, right), false
+let balance_right color left value (right,is_shorter) =
    (* complemaentary as the above *)
    if is_shorter then
-       match colour, left, value, right with
+       match color, left, value, right with
         | Black, T (Red, a, x, T (Black, b, y, c)), z, d
           -> T (Black, balance Black (redden a) x b, y, T (Black, c, z, d)),false
         | k, T (Black, T (Red, a, x, b), y, c), z, d
@@ -488,16 +528,16 @@ let balance_right colour left value (right,is_shorter) =
           -> T (Black, T (Red, a, x, b), y, z),k=Black
         | _ -> failwith "Impossible cases by red property, or property b"
     else
-        T (colour, left, value, right), false
+        T (color, left, value, right), false
 
 let delete cmp elt tree =
     let rec del = function
         L -> raise Not_found
-      | T (colour, left, root ,right) ->
+      | T (color, left, root ,right) ->
         let c = cmp elt root in
-        if c < 0 then balance_left colour (del left) root right
-        else if c > 0 then balance_right colour left root (del right)
-        else remove colour left right
+        if c < 0 then balance_left color (del left) root right
+        else if c > 0 then balance_right color left root (del right)
+        else remove color left right
   and remove c l r = match c,l,r with
     (* Remove a leaf *)
     | Red  , L, L -> L, false
