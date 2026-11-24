@@ -33,6 +33,7 @@
 
 \usepackage{pst-tree}
 \usepackage{pst-arrow}
+\usepackage{auto-pst-pdf}
 
 %\usepackage{hyperref}
 
@@ -61,11 +62,11 @@ and thus guaranties the performance of look-ups, insertions and deletions in the
 In a red-black tree, each node has an additional color bit (red or black), and the relative balance
 of the tree is achieved by enforcing the following properties :
 \begin{enumerate}
-\item Each node is either red or black.
-\item The root is black
-\item All leaves are black
-\item A Red node cannot have red child
-\item Every path from a given node to any of its leaves goes through the same number of black nodes. (this number is referred as the black height of the subtree at the node)
+   \item Each node is either red or black.
+   \item The root is black
+   \item All leaves are black
+   \item A Red node cannot have red child
+   \item Every path from a given node to any of its leaves goes through the same number of black nodes. (this number is referred as the black height of the subtree at the node)
 \end{enumerate}
 
 The last two, that we will refer as the red property and the black property, imply that at every node the higher subtree emerging from its children is at most twice as high as the other subtree. Thus, it ensures that there is at worst a factor two between the deepest leaf and the other leaf, keeping it sufficiently balance to guaranty the algorithmic performance (log (n)).
@@ -77,17 +78,17 @@ The imperative version of the algorithm was first presented by Guibas and Sedgew
 
 Oksaki adapted the insertion like this :
 \begin{codeblock}
-let insert cmp elt tree =
-    let rec ins = function
-        L -> T (Red, L, elt, L)
-      | T (color, left, root, right) ->
-         let diff = cmp elt root in
-         if diff = 0 then T (color, left, root, right)
-         else if diff < 0 then
-            balance color (ins left) root right
-         else
-            balance color left root (ins right)
-    in blacken (ins tree)
+   let insert cmp elt tree =
+   let rec ins = function
+   L -> T (Red, L, elt, L)
+   | T (color, left, root, right) ->
+   let diff = cmp elt root in
+   if diff = 0 then T (color, left, root, right)
+   else if diff < 0 then
+   balance color (ins left) root right
+   else
+   balance color left root (ins right)
+   in blacken (ins tree)
 \end{codeblock}
 
 As in BST, the new node is inserted at the leaf.
@@ -98,90 +99,90 @@ This recoloring can also lead to a double red node, which is solved by recurrenc
 Sometime this will lead the root to be turned red. In this case, we simply repaint it black to restore the second property.
 
 \begin{figure}[ht]
-\begin{center}
-\hfill
- \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
-	\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
-		\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{x}}}{
-			\TR{a}
-			\TR{b}
-			}
-		\TR{c}
-		}
-	\TR{d}
-	}
-\hfill
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
-	\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{x}}}{
-		\TR{a}
-		\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
-			\TR{b}
-			\TR{c}
-			}
-		}
-	\TR{d}
-	}
-\hfill
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
-	\TR{a}
-	\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
-		\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
-			\TR{b}
-			\TR{c}
-			}
-		\TR{d}
-		}
-	}
-\hfill
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
-	\TR{a}
-	\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
-		\TR{b}
-		\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
-			\TR{c}
-			\TR{d}
-			}
-		}
-	}
-\hfill
-\hfill
+   \begin{center}
+      \hfill
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
+         \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
+            \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{x}}}{
+               \TR{a}
+               \TR{b}
+            }
+            \TR{c}
+         }
+         \TR{d}
+      }
+      \hfill
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
+         \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{x}}}{
+            \TR{a}
+            \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
+               \TR{b}
+               \TR{c}
+            }
+         }
+         \TR{d}
+      }
+      \hfill
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
+         \TR{a}
+         \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
+            \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
+               \TR{b}
+               \TR{c}
+            }
+            \TR{d}
+         }
+      }
+      \hfill
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
+         \TR{a}
+         \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
+            \TR{b}
+            \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
+               \TR{c}
+               \TR{d}
+            }
+         }
+      }
+      \hfill
+      \hfill
 
 
 
-\vspace{17pt}
-\vspace{17pt}
-\hfill\psline{->}(0,0.5)(0,-0.5)\hfill
-\vspace{17pt}
+      \vspace{17pt}
+      \vspace{17pt}
+      \hfill\psline{->}(0,0.5)(0,-0.5)\hfill
+      \vspace{17pt}
 
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
-		\TR{a}
-		\TR{b}}
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
-		\TR{c}
-		\TR{d}}
-	}
-	\label{fig:okasaki}
-	\caption{Okasaki's balance algorithm}
-\end{center}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
+            \TR{a}
+            \TR{b}}
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
+            \TR{c}
+            \TR{d}}
+      }
+      \label{fig:okasaki}
+      \caption{Okasaki's balance algorithm}
+   \end{center}
 \end{figure}
 
 Okasaki's balance algorithm is presented here :
 
 \begin{codeblock}
-let balance color left root right =
-    match color, left, root, right with
-        Black, T (Red, T (Red, a, x, b), y, c), z, d
-      | Black, T (Red, a, x, T (Red, b, y, c)), z, d
-      | Black, a, x, T (Red, T (Red, b, y, c), z, d
-      | Black, a, x, T (Red, b, y, T (Red, c, z, d)) ->
-          T (Red, T (Black, a, x, b), y, T (Black, c, z, d))
-      | _ ->
-          T (color, left, root, right)
+   let balance color left root right =
+   match color, left, root, right with
+   Black, T (Red, T (Red, a, x, b), y, c), z, d
+   | Black, T (Red, a, x, T (Red, b, y, c)), z, d
+   | Black, a, x, T (Red, T (Red, b, y, c), z, d
+   | Black, a, x, T (Red, b, y, T (Red, c, z, d)) ->
+   T (Red, T (Black, a, x, b), y, T (Black, c, z, d))
+   | _ ->
+   T (color, left, root, right)
 \end{codeblock}
 
 To sum up, the insertion algorithm break the red property and Okasaki proposed the balance algorithm that restore it.
@@ -198,23 +199,23 @@ In this article we will present an algorithm that restore the black invariant du
 
 The deletion for a BST algorithm is the following :
 \begin{codeblock}
-let delete cmp elt tree =
-    let rec del = function
-        L -> raise Not_found
-      | T (left, root ,right) ->
-        let c = cmp elt root in
-        if c < 0 then (del left) root right
-        else if c > 0 then left root (del right)
-        else remove left right
-    and remove l r = match l,r with
-        left, L  -> left
-      | L, right -> right
-      | T(l,v,r), right ->
-        let v', l' = remove_rightmost l v r in
-        T (l', v', right)
-    and remove_rightmost left value = function
-        L -> value, left
-      | T(l,v,r) -> T (left,value, remove_rightmost l v r)
+   let delete cmp elt tree =
+   let rec del = function
+   L -> raise Not_found
+   | T (left, root ,right) ->
+   let c = cmp elt root in
+   if c < 0 then (del left) root right
+   else if c > 0 then left root (del right)
+   else remove left right
+   and remove l r = match l,r with
+   left, L  -> left
+   | L, right -> right
+   | T(l,v,r), right ->
+   let v', l' = remove_rightmost l v r in
+   T (l', v', right)
+   and remove_rightmost left value = function
+   L -> value, left
+   | T(l,v,r) -> T (left,value, remove_rightmost l v r)
 \end{codeblock}
 
 
@@ -228,91 +229,91 @@ The information that we need is whether the deletion appeared in the left or rig
 
 This lead to the following \code{delete} function :
 \begin{codeblock}
-let delete cmp elt tree =
-    let rec del = function
-        L -> raise Not_found
-      | T (color, left, root ,right) ->
-        let c = cmp elt root in
-        if c < 0 then balance_left color (del left) root right
-        else if c > 0 then balance_right color left root (del right)
-        else remove color left right
-     ...
+   let delete cmp elt tree =
+   let rec del = function
+   L -> raise Not_found
+   | T (color, left, root ,right) ->
+   let c = cmp elt root in
+   if c < 0 then balance_left color (del left) root right
+   else if c > 0 then balance_right color left root (del right)
+   else remove color left right
+   ...
 \end{codeblock}
 
 The \code{remove} function also need to be modified, to take the color as input and to return, along with the new subtree, a boolean set to true if the tree is shorter after deletion.
 For this function, we discriminate between three cases on the node to remove.
 
 \begin{enumerate}
-  \item The node has two leaf children, in this case, it is replaced by a leaf (fig.~\ref{fig:no-child}), which decrease the black height if the node was black.
-  \item The node has exactly one leaf child, then by construction, the other child is a red node with two leaf children, and the node to remove is black. In this case, we replace the node to remove by its child, repainted black (fig. 3) and the black height doesn't change.
-  \item In the last case the node has two non leaf children. We replace the value with the in-order predecessor (or successor) and then remove this other node, which has at most one child as the rightmost (resp. leftmost) value of a tree, so we end up with one of the previous cases.
+   \item The node has two leaf children, in this case, it is replaced by a leaf (fig.~\ref{fig:no-child}), which decrease the black height if the node was black.
+   \item The node has exactly one leaf child, then by construction, the other child is a red node with two leaf children, and the node to remove is black. In this case, we replace the node to remove by its child, repainted black (fig. 3) and the black height doesn't change.
+   \item In the last case the node has two non leaf children. We replace the value with the in-order predecessor (or successor) and then remove this other node, which has at most one child as the rightmost (resp. leftmost) value of a tree, so we end up with one of the previous cases.
 \end{enumerate}
 
 Since the deletion in the left of right subtree can reduce the black height and thus break the black property, we have to add a balance function in the algorithm to restore it.
 
 \begin{figure}[ht]
-\begin{center}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle{x}}{
-	\Tdot
-	\Tdot
-	}
-\hspace{17pt}
-\hspace{17pt}
-\psline{->}(-0.5,0)(0.5,0)
-\hspace{17pt}
-\hspace{17pt}
-\pstree{\Tdot}
+   \begin{center}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle{x}}{
+         \Tdot
+         \Tdot
+      }
+      \hspace{17pt}
+      \hspace{17pt}
+      \psline{->}(-0.5,0)(0.5,0)
+      \hspace{17pt}
+      \hspace{17pt}
+      \pstree{\Tdot}
 
-	\label{fig:no-child}
-	\caption{Deletion of a leaf}
-\end{center}
+      \label{fig:no-child}
+      \caption{Deletion of a leaf}
+   \end{center}
 \end{figure}
 
 \begin{figure}[ht]
-\begin{center}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
-	\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{x}}}{
-		\Tdot
-		\Tdot
-		}
-	\Tdot
-	}
-\hspace{17pt}
-\hspace{17pt}
-\psline{->}(-0.5,0)(0.5,0)
-\hspace{17pt}
-\hspace{17pt}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
-	\Tdot
-	\Tdot
-	}
-	\label{fig:one-child}
-	\caption{Deletion of a node with only one child}
-\end{center}
+   \begin{center}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
+         \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{x}}}{
+            \Tdot
+            \Tdot
+         }
+         \Tdot
+      }
+      \hspace{17pt}
+      \hspace{17pt}
+      \psline{->}(-0.5,0)(0.5,0)
+      \hspace{17pt}
+      \hspace{17pt}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
+         \Tdot
+         \Tdot
+      }
+      \label{fig:one-child}
+      \caption{Deletion of a node with only one child}
+   \end{center}
 \end{figure}
 
 This algorithm is shown here:
 \begin{codeblock}
-  and remove c l r = match c,l,r with
-    (* Remove a leaf *)
-    | Red  , L, L -> L, false
-    | Black, L, L -> L, true
-    (* Only one child implies the child is red and the parent is black *)
-    | Black, T (Red, l, v, r), L)
-    | Black, L, T (Red, l, v, r)) -> T (Black, l, v, r), false
-    (* Two sub-trees*)
-    | c, T(c',l',v',r'), r ->
-      let v, l = remove_rightmost c' l' v' r' in
-           balance_left c l v r
+   and remove c l r = match c,l,r with
+   (* Remove a leaf *)
+   | Red  , L, L -> L, false
+   | Black, L, L -> L, true
+   (* Only one child implies the child is red and the parent is black *)
+   | Black, T (Red, l, v, r), L)
+   | Black, L, T (Red, l, v, r)) -> T (Black, l, v, r), false
+   (* Two sub-trees*)
+   | c, T(c',l',v',r'), r ->
+   let v, l = remove_rightmost c' l' v' r' in
+   balance_left c l v r
 
-  and remove_rightmost c l v = function
-      L -> v, remove c l L
-    | T (c', l', v', r') ->
-      let rightmost_value, r = remove_rightmost c' l' v' r'
-      rightmost_value, balance_right c l v r
+   and remove_rightmost c l v = function
+   L -> v, remove c l L
+   | T (c', l', v', r') ->
+   let rightmost_value, r = remove_rightmost c' l' v' r'
+   rightmost_value, balance_right c l v r
 \end{codeblock}
 
 Let's now take a look at the \code{balance_left} function. This function receives a node after the delete function was called on the left subtree.
@@ -326,37 +327,37 @@ The first case is when the sibling is red (fig. 4). Then the root is black (red 
 Then with a left rotation at the sibling node, we put (a), (b), (c), and (d) at the same height in the tree. By coloring the sibling black and (d) red, we restore the black property, but we may break the red property. For this reason, we have to call Okasaki's balance function on the right sibling restoring the red property at the sibling subtree and keeping the black property intact.
 
 \begin{figure}[ht]
-\begin{center}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
-	\TR{a}
-	\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
-		\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
-			\TR{b}
-			\TR{c}
-			}
-		\TR{d}
-		}
-	}
-\hspace{17pt}
-\hspace{17pt}
-\psline{->}(-0.5,-0.5)(0.5,-0.5)
-\hspace{17pt}
-\hspace{17pt}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
-		\TR{a}
-		\TR{b}
-	}
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
-		\TR{c}
-		\TR{d}
-	}
-}
-\label{case1}
-\caption{Case 1}
-\end{center}
+   \begin{center}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
+         \TR{a}
+         \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
+            \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
+               \TR{b}
+               \TR{c}
+            }
+            \TR{d}
+         }
+      }
+      \hspace{17pt}
+      \hspace{17pt}
+      \psline{->}(-0.5,-0.5)(0.5,-0.5)
+      \hspace{17pt}
+      \hspace{17pt}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
+            \TR{a}
+            \TR{b}
+         }
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
+            \TR{c}
+            \TR{d}
+         }
+      }
+      \label{case1}
+      \caption{Case 1}
+   \end{center}
 \end{figure}
 
 
@@ -366,51 +367,51 @@ Similarly, a left rotation at the right sibling (or a right rotation if the red 
 
 
 \begin{figure}[ht]
-\begin{center}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle{x}}{
-	\TR{a}
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
-		\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
-			\TR{b}
-			\TR{c}
-			}
-		\TR{d}
-		}
-	}
-\hspace{17pt}
-or
-\hspace{17pt}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle{x}}{
-	\TR{a}
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
-		\TR{b}
-		\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
-			\TR{c}
-			\TR{d}
-			}
-		}
-	}
-\hspace{17pt}
-\hspace{17pt}
-\psline{->}(-0.5,-0.5)(0.5,-0.5)
-\hspace{17pt}
-\hspace{17pt}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle{y}}{
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
-		\TR{a}
-		\TR{b}
-	}
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
-		\TR{c}
-		\TR{d}
-	}
-}
-	\label{fig:case2}
-	\caption{Case 2}
-\end{center}
+   \begin{center}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle{x}}{
+         \TR{a}
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
+            \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{y}}}{
+               \TR{b}
+               \TR{c}
+            }
+            \TR{d}
+         }
+      }
+      \hspace{17pt}
+      or
+      \hspace{17pt}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle{x}}{
+         \TR{a}
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
+            \TR{b}
+            \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
+               \TR{c}
+               \TR{d}
+            }
+         }
+      }
+      \hspace{17pt}
+      \hspace{17pt}
+      \psline{->}(-0.5,-0.5)(0.5,-0.5)
+      \hspace{17pt}
+      \hspace{17pt}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle{y}}{
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{x}}}{
+            \TR{a}
+            \TR{b}
+         }
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
+            \TR{c}
+            \TR{d}
+         }
+      }
+      \label{fig:case2}
+      \caption{Case 2}
+   \end{center}
 \end{figure}
 
 
@@ -423,59 +424,78 @@ When unpiling the call stack, the balancing will be performed by recurrence unti
 or we eventually reach the root.
 
 \begin{figure}[ht]
-\begin{center}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle{y}}{
-	\TR{x}
-	\pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
-		\TR{c}
-		\TR{d}
-		}
-	}
-\hspace{17pt}
-\hspace{17pt}
-\psline{->}(-0.5,-0.5)(0.5,-0.5)
-\hspace{17pt}
-\hspace{17pt}
-\pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
-{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
-	\TR{x}
-	\pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
-		\TR{c}
-		\TR{d}
-	}
-}
-	\label{fig:case3}
-	\caption{Case 3}
-\end{center}
+   \begin{center}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle{y}}{
+         \TR{x}
+         \pstree{\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{z}}}{
+            \TR{c}
+            \TR{d}
+         }
+      }
+      \hspace{17pt}
+      \hspace{17pt}
+      \psline{->}(-0.5,-0.5)(0.5,-0.5)
+      \hspace{17pt}
+      \hspace{17pt}
+      \pstree[nodesep=2pt,levelsep=17pt,treesep=14pt]
+      {\TCircle[fillcolor=black,fillstyle=solid]{\textcolor{white}{y}}}{
+         \TR{x}
+         \pstree{\TCircle[fillcolor=red,fillstyle=solid]{\textcolor{white}{z}}}{
+            \TR{c}
+            \TR{d}
+         }
+      }
+      \label{fig:case3}
+      \caption{Case 3}
+   \end{center}
 \end{figure}
 
 
 The code of the \code{balance_left} function is presented here
 
 \begin{codeblock}
-let balance_left color (left, is_shorter) value right =
-    if is_shorter then
-        match color, left, value, right with
-        (* fig 4 *)
-        | Black, a, x, T (Red, T (Black, b, y, c), z, d)
-          -> T (Black, T (Black, a, x, b), y, balance Black c z (redden d)),false
-        (* fig. 5 *)
-        | k, a, x, T (Black, T (Red, b, y, c), z, d)
-        | k, a, x, T (Black, b, y, T (Red, c, z, d))
-          -> T (k, T (Black, a, x, b), y, T (Black, c, z, d)),false
-        (* fig 6*)
-        | k, x, y, T (Black, c, z, d)
-          -> T (Black, x, y, T (Red, c, z, d)),k=Black
-        | _ -> failwith "Impossible cases by red property, or property b"
-    else
-        T (color, left, value, right), false
+   let balance_left color (left, is_shorter) value right =
+   if is_shorter then
+   match color, left, value, right with
+   (* fig 4 *)
+   | Black, a, x, T (Red, T (Black, b, y, c), z, d)
+   -> T (Black, T (Black, a, x, b), y, balance Black c z (redden d)),false
+   (* fig. 5 *)
+   | k, a, x, T (Black, T (Red, b, y, c), z, d)
+   | k, a, x, T (Black, b, y, T (Red, c, z, d))
+   -> T (k, T (Black, a, x, b), y, T (Black, c, z, d)),false
+   (* fig 6*)
+   | k, x, y, T (Black, c, z, d)
+   -> T (Black, x, y, T (Red, c, z, d)),k=Black
+   | _ -> failwith "Impossible cases by red property, or property b"
+   else
+   T (color, left, value, right), false
 \end{codeblock}
 the full code of the delete function is given in appendix~\ref{sec:ann1}.
 
 The \code{balance_right} is the symmetric as \code{balance_left} with left and right siblings inverted.
 
 \section {Formal Proof}
+
+The algorithm was transcribes in Coq. The definition of the tree is analog to the one in Software Foundations Vol.3 ~\cite{pierce_2019}.
+
+\begin{codeblock}
+   Inductive RedBlack {X} : tree X -> nat -> Prop :=
+   | rb_leaf : RedBlack Leaf 0
+   | rb_red_node : forall l r v n,
+   RedBlack l n ->
+   RedBlack r n ->
+   IsBlack l ->
+   IsBlack r ->
+   RedBlack (Node Red l v r) n
+   | rb_black_node : forall l r v n,
+   RedBlack l n ->
+   RedBlack r n ->
+   RedBlack (Node Black l v r) (S n).
+
+\end{codeblock}
+
 
 \section{Conclusion}
 
@@ -499,63 +519,63 @@ For these reasons, we believe that our implementation should be preferred.
 \label{sec:ann1}
 
 \begin{codeblock}
-let balance_left color (left, is_shorter) value right =
-    if is_shorter then
-        match color, left, value, right with
-        (* fig *)
-        | Black, a, x, T (Red, T (Black, b, y, c), z, d)
-          -> T (Black, T (Black, a, x, b), y, balance Black c z (redden d)),false
-        (* fig.  *)
-        | k, a, x, T (Black, T (Red, b, y, c), z, d)
-        | k, a, x, T (Black, b, y, T (Red, c, z, d))
-          -> T (k, T (Black, a, x, b), y, T (Black, c, z, d)),false
-        (* fig *)
-        | k, x, y, T (Black, c, z, d)
-          -> T (Black, x, y, T (Red, c, z, d)),k=Black
-        | _ -> failwith "Impossible cases by red property, or property b"
-    else
-        T (color, left, value, right), false
-let balance_right color left value (right,is_shorter) =
+   let balance_left color (left, is_shorter) value right =
+   if is_shorter then
+   match color, left, value, right with
+   (* fig *)
+   | Black, a, x, T (Red, T (Black, b, y, c), z, d)
+   -> T (Black, T (Black, a, x, b), y, balance Black c z (redden d)),false
+   (* fig.  *)
+   | k, a, x, T (Black, T (Red, b, y, c), z, d)
+   | k, a, x, T (Black, b, y, T (Red, c, z, d))
+   -> T (k, T (Black, a, x, b), y, T (Black, c, z, d)),false
+   (* fig *)
+   | k, x, y, T (Black, c, z, d)
+   -> T (Black, x, y, T (Red, c, z, d)),k=Black
+   | _ -> failwith "Impossible cases by red property, or property b"
+   else
+   T (color, left, value, right), false
+   let balance_right color left value (right,is_shorter) =
    (* complemaentary as the above *)
    if is_shorter then
-       match color, left, value, right with
-        | Black, T (Red, a, x, T (Black, b, y, c)), z, d
-          -> T (Black, balance Black (redden a) x b, y, T (Black, c, z, d)),false
-        | k, T (Black, T (Red, a, x, b), y, c), z, d
-        | k, T (Black, a, x, T (Red, b, y, c)), z, d
-          -> T (k, T (Black, a, x, b), y, T (Black, c, z, d)),false
-        | k, T (Black, a, x, b), y, z
-          -> T (Black, T (Red, a, x, b), y, z),k=Black
-        | _ -> failwith "Impossible cases by red property, or property b"
-    else
-        T (color, left, value, right), false
+   match color, left, value, right with
+   | Black, T (Red, a, x, T (Black, b, y, c)), z, d
+   -> T (Black, balance Black (redden a) x b, y, T (Black, c, z, d)),false
+   | k, T (Black, T (Red, a, x, b), y, c), z, d
+   | k, T (Black, a, x, T (Red, b, y, c)), z, d
+   -> T (k, T (Black, a, x, b), y, T (Black, c, z, d)),false
+   | k, T (Black, a, x, b), y, z
+   -> T (Black, T (Red, a, x, b), y, z),k=Black
+   | _ -> failwith "Impossible cases by red property, or property b"
+   else
+   T (color, left, value, right), false
 
-let delete cmp elt tree =
-    let rec del = function
-        L -> raise Not_found
-      | T (color, left, root ,right) ->
-        let c = cmp elt root in
-        if c < 0 then balance_left color (del left) root right
-        else if c > 0 then balance_right color left root (del right)
-        else remove color left right
-  and remove c l r = match c,l,r with
-    (* Remove a leaf *)
-    | Red  , L, L -> L, false
-    | Black, L, L -> L, true
-    (* Only one child implies the child is red and the parent is black *)
-    | Black, T (Red, l, v, r), L)
-    | Black, L, T (Red, l, v, r)) -> T (Black, l, v, r), false
-    (* Two sub-trees*)
-    | c, T(c',l',v',r'), r ->
-      let v, l = remove_rightmost c' l' v' r' in
-           balance_left c l v r
-  and remove_rightmost c l v = function
-      L -> v, remove c l L
-    | T (c', l', v', r') ->
-      let rightmost_value, r = remove_rightmost c' l' v' r'
-      rightmost_value, balance_right c l v r
-  (* Discard the boolean *)
-  in fst (del tree)
+   let delete cmp elt tree =
+   let rec del = function
+   L -> raise Not_found
+   | T (color, left, root ,right) ->
+   let c = cmp elt root in
+   if c < 0 then balance_left color (del left) root right
+   else if c > 0 then balance_right color left root (del right)
+   else remove color left right
+   and remove c l r = match c,l,r with
+   (* Remove a leaf *)
+   | Red  , L, L -> L, false
+   | Black, L, L -> L, true
+   (* Only one child implies the child is red and the parent is black *)
+   | Black, T (Red, l, v, r), L)
+   | Black, L, T (Red, l, v, r)) -> T (Black, l, v, r), false
+   (* Two sub-trees*)
+   | c, T(c',l',v',r'), r ->
+   let v, l = remove_rightmost c' l' v' r' in
+   balance_left c l v r
+   and remove_rightmost c l v = function
+   L -> v, remove c l L
+   | T (c', l', v', r') ->
+   let rightmost_value, r = remove_rightmost c' l' v' r'
+   rightmost_value, balance_right c l v r
+   (* Discard the boolean *)
+   in fst (del tree)
 \end{codeblock}
 
 \end{document}

@@ -1,0 +1,246 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+
+\usepackage{times}
+\usepackage{authblk}
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{lmodern}
+
+\title{An Engineer's Self-Taught Journey with the Rocq Proof Assistant}
+\author[1]{Pierre-Emmanuel Wulfman}
+\date{}
+\affil[1]{Graduate School of Mathematics, Nagoya University, Japan}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+   This talk shares a testimony of how a software engineer ended up learning the Rocq proof assistant without the support of an academic environment. In doing so, I aim to provide an outside perspective on the quality of the available online resources, the difficulties encountered, some highlights and shortcomings, and some proof design patterns that emerged spontaneously while proving a novel algorithm over the course of a few weekends.
+\end{abstract}
+
+\section{Introduction}
+As a community of experts, it is often difficult to step back into the shoes of a newcomer. What is trivial for some can be inscrutable for others. In an attempt to bridge this gap, I offer my experiences as a software engineer who learned Rocq as an autodidact in his spare time.
+
+Let me first share my background, since what I already knew before starting had a significant influence on my learning process. I am an engineer in Information Technology by training, and I have worked for several startups as a developer in various languages---notably as a compiler engineer for Tezos. So I was already familiar with writing mathematical proofs on pen and paper, and I had taught myself OCaml and some type theory when I started that position. However, I hadn't studied formal logic such as category theory or the calculus of inductive constructions.
+
+\section{Learning Rocq and Automated Theorem Proving}
+The first step in any learning process---so trivial that we often forget it---is to know that what you want to learn actually exists, and to be motivated enough to invest the time and effort into it. In my case, this went very smoothly. Several of my colleagues were using Coq to certify our compiler. I even tweaked some data structures, inferring their behavior from the rest of the codebase. So it was on my radar, but more as a curiosity---something that everyone said was very difficult to use. As a result, it remained at the bottom of my priority list until I had proper motivation.
+
+That motivation came when I had to implement a red-black tree in OCaml, and I couldn't find any deletion algorithm in the literature. So I ended up implementing my own and drafting a paper on the subject. When asking for advice on how to submit it, I was told that in order to meet publishing standards, I needed to provide an automated proof of correctness---which meant I had to learn Coq.
+
+Even then, it took me another half-year to actually get started, partly due to lack of time, and partly due to not knowing where to begin. Of course, I visited the official website, but I only found the reference manual, which at a glance looked like a formal grammar specification rather than an introduction to usage. I then asked my colleagues for advice, and they pointed me to the \textit{Software Foundations} series.
+
+From there, I had a clear path. My objective was not to become an expert (yet), but to prove my algorithm in order to publish it. So my roadmap was to go through the first book to get familiar with the tooling, learn the keywords to write data structures and algorithms, and then to write theorems and learn the various tactics available to prove them. After that, I practiced on Okazaki's insertion algorithm. Finally, I applied what I had learned to my own algorithm.
+
+\section{Challenges When Tackling the Problem}
+The initial learning process went quite smoothly. Most of the concepts were familiar to me, so the examples and exercises didn't take too long. The problems really started in phase two.
+
+I had already implemented and tested the algorithms in OCaml. A copy-paste of the code, followed by a few modifications to fit the Rocq syntax, and I was ready to start writing theorems.
+
+And this is where all the problems appeared at once. Should I write my properties using the \texttt{Inductive} keyword or the \texttt{Definition} one? I had defined my tree as polymorphic, so the comparator was polymorphic too---how should I model the comparison function? In the middle of a proof, I found myself stuck because I needed to use properties of order relations---how could I model this while keeping a generic comparator and a reusable structure? When should I unfold a \texttt{Fixpoint} definition, and how could I keep the goal state clean?
+
+But the most difficult part for me was learning how to split a theorem into smaller lemmas. I began with the statement I wanted to prove, which was trivial to write:
+\begin{quote}
+   $\forall X : \text{Type}, v : X, t : \text{Tree}\ X, \text{ if } t \text{ is red-black, then } \text{insert } t\ v \text{ is also red-black.}$
+\end{quote}
+
+But when trying to prove it, I quickly ended up with five to seven levels of indentation and a goal that became unintelligible.
+
+So I began proving the same property on subroutines, intending to use them in the main proof to handle complexity. In doing so, I got stuck on the main proof because applying the lemmas caused me to lose contextual information and the hypotheses I needed to prove the main theorem. That's when I came to understand what my colleagues meant when they said the hardest part is choosing the right invariants.
+
+After two hyper-focused weekends, going back and forth between different approaches, I felt stuck in a live lock. So I stepped back and searched for Coq proofs of regular binary search trees, hoping to extrapolate some design patterns. That's how I ended up in Volume 3 of the \textit{Software Foundations} series, which also covers Okazaki's algorithm. After analyzing and reproducing those proofs, I was finally ready to tackle the \texttt{delete} algorithm.
+
+For the delete algorithm, I encountered the same issues---but without a book to guide me. After another two hyper-focused weekends of experimentation, I discovered the right invariant and completed the proof.
+
+\section{Discussion}
+Many of the difficulties I encountered could have been avoided if I had taken the time to properly learn Coq in depth. But an engineer's job is to produce, not to study; to write code that works, even if the design is terrible. So engineers seek actionable knowledge---fast---even if it's incomplete. This is especially true in startup environments, where survival is uncertain, and the short term must be prioritized. I would be surprised if startups were the target audience for the Rocq proof assistant---but even large companies and academic researchers have deadlines.
+
+Imagine a geometer who thinks Rocq might be useful to guide their research. Should they invest a year studying a completely different field, or stick to pen and paper to avoid losing focus? What about a team of experimental physicists who want to guarantee that the instructions they send to their collider actually do what they intend?
+
+Beyond the entry barrier, one thing I found particularly time-consuming was \textbf{refactoring}. During development---and even during execution---a codebase is alive. Regularly, you must modify your data structures. Often, you start with a certain design pattern and later realize it no longer fits the evolved project. Sometimes you need to redo the entire architecture. But doing so invalidates your proofs. One could argue that you should wait until the product is finished before proving it---but that assumes there \textit{is} a finished product. Even after a version is released, development on the next version starts from the previous one. That's why we prioritize readability and maintainability.
+
+In the proof I wrote---what would amount to an epsilon of a real project---refactoring often broke the proofs. For example, when working on your tenth theorem, you realize you need to reorder a function's arguments. Then you must go back to proof number two, because the naming engine assigns different names to your hypotheses.
+
+This led me to a pattern where I would write a tactic---for instance, one that case-matches the proof state of sometimes 30 cases---inside a \texttt{repeat} block. Then I would write my proof using \texttt{;} instead of \texttt{.}.
+
+This had the effect of both "brute-forcing" the proof---applying regular patterns until they no longer match---and making the proof naming-independent. That way, I could directly return to where I left off after a refactor.
+
+This is just a naive workaround for a much deeper problem. My superficial knowledge of Coq means I don't know what other patterns exist. But if such patterns \textit{do} exist, it would be valuable to share them with the community---and if they don't, then this is an area that deserves more attention.
+% \section{Introduction}
+% As a community of experts, it is often difficult to step back into the shoes of a newcomer.
+% What is trivial for some can be inscrutable for others. In an attempt to bridge this gap,
+% I offer my experiences as a software engineer who learned Rocq as an autodidact on his spare time.
+
+% Let me first share my background since what I already knew before starting has a significant influence on
+% this learning process. I am an Engineer in Information Technology by training, and worked for several
+% startups as a developer in diverse languages, notably as compiler engineer for Tezos.
+% So I was familiar with writing mathematical proofs on pen and paper, and taught myself OCaml and
+% some type theory when I started this position. But I hadn't studied formal logic such as category theory
+% or calculus of inductive constructions.
+
+
+% \section{Learning Rocq and automated theorem proving}
+
+% The first step in any learning process which is so trivial that we tend to forget it, is to actually
+% know that the things you want to learn exists and a motivation to invest the time and effort in it.
+% In my case, this went very smoothly. Several of my colleagues were using Coq to certify our compiler,
+% I even tweaked some data structures, inferring from the rest of our codebase. So it was on my radar,
+% but more has a curiosity and something that everyone said is very difficult to use. But it was always
+% put at the end of my priority list, until I had a proper motivation.
+
+% This came when I had to implement a red-black tree in OCaml, and I couldn't find any deletion algorithm
+% in the literature. So I ended up implementing my own, and drafted a paper on the subject.
+% When asking for advice on how to submit it, I was told that in order to meet the publishing standards,
+% I needed to provide an automated proof of correctness, so that I needed to learn Coq.
+
+% From there, I took still about a half-year to actually start, partly from lack of time,
+% partly from not knowing where to start. Of course, I went to the official website but only found the reference manual,
+% but at a glance, it looked like a formal description of the grammar and not actually how to use it.
+% So I asked my colleague for advice, and they pointed me to the Software Foundations series.
+
+% From there, I had a clear path ahead of me. My objective was not to become an expert(yet), but to have
+% a proof of my algorithm to publish. Thus, my roadmap was to go through the first book to get familiar with the tooling,
+% learn the keywords to write data structures and algorithm, and then how to write theorems and what are
+% the different tactics available to prove them. After that, practicing on Okazaki's algorithm for insertion.
+% And finally, apply this experiences into my novel algorithm.
+
+
+% \section{Challenges when tackling the problem}
+
+% The learning process went quite smoothly. Most of the concepts were familiar to me, so the examples
+% and exercises didn't take too long to complete. The problem really started when starting phase 2.
+
+% I already had implemented and tested the algorithms in OCaml, so a copy-paste of the code and a
+% few modifications to make it fit the Rocq syntax, and I was ready to start writing theorems.
+
+% And this is where every problem arose all together.
+% Should I write my properties using the inductive keywords or the definition ones?
+% I define my tree as polymorphic, so the comparator is also polymorphic, so how do model the comparison function ?
+% In the middle of the proof, I am stuck because I need to use the properties of order relations, how do I model
+% this while keeping a generic comparator and have a reusable structure? When to unfold a Fixpoint definition and
+% how to keep the goal state clean?
+
+% But the most difficult part for me was to understand how to separate a theorem into smaller lemmas.
+% I start with what I wanted to prove, which is trivial to write,
+% \begin{quote}
+%    \textbf{$\forall$ X:Type, v:X, t:Tree X} if \textbf{t} is red-black then \textbf{insert t v} is also red-black.
+% \end{quote}
+% But when trying to prove it, I quickly ended up with 5 or 7 level of indentation, and a goal that became unintelligible.
+
+% So I started proving the same property on subroutines, so I could use them in the main proof and handle the complexity.
+% Doing so, I ended up stuck on the main proof, because by applying the lemmas of the subroutines I lost contextual Information
+% and the hypotheses I needed to prove the main theorem. This is how I came to understand what my colleagues
+% meant by \emph{the main difficulty is choosing the correct invariants}.
+
+% After two hyperfocused weekends, going back and forth between those different options, I felt like I was stuck in
+% a livelock. So I took a step back and searched for Coq proof of regular binary search trees, thinking that I may
+% be able to extrapolate some design patterns. That is how I ended up on volume 3 of the Software Foundations series,
+% which also covers Okazaki's algorithm. After analyzing and reproducing the proofs, I was ready to prove the delete algorithm.
+
+% For the delete algorithm, I encountered the same issues but without the solution provided in a book.
+% After another two hyperfocused weekends of experimentation, I found the right invariant and completed the proof.
+
+% \section{Discussion}
+
+% A lot of the difficulties I encountered could have been avoided if I had taken the time to properly learn Coq in depth.
+% But an engineer's job is to produce and not to study, to have code that works even when the design is horrific.
+% So an engineer is looking to acquire actionable knowledge quickly, even if it is incomplete. This is especially true
+% in a startup environment where the uncertainty of survival is high, so you need to prioritize the short-term.
+% I would be surprised if startups were the target audience of the Rocq proof assistant, but even big companies
+% and other researchers have deadlines to meet. Imagine a geometrician who would think that Rocq could be a good tool to
+% guide his research. Should he invest a year to study a different field or should instead use pen and paper so that he doesn't lose focus?
+% What about a team of experimental physicists who want to guarantee that what they program their colliders to do
+% is actually what they want?
+
+% Aside from the entry barrier, one thing that I found particularly time-consuming was refactoring.
+% During the development of a project and sometimes even the execution, the codebase is alive. Regularly, you need to modify your data structures.
+% often, you started with a certain design pattern and realized later that it's not appropriate anymore for
+% how the project evolved. Sometimes you even need to redo the entire architecture. But doing so makes the proofs
+% invalid. One could argue that you should wait until you have a finish product before you start proving it,
+% but this is assuming that there is a finish product. Even when a version is released, the next one is already being developed
+% from the previous one. This is why we prioritize readability and maintainability.
+
+% In the proof I wrote, on what would be an epsilon of a real project, refactoring often breaks the proofs.
+% For instance, When working on your tenth theorem, you realize you need to reorder the arguments of a function
+% then you need to go back to proof number two because the naming engine give different names to your hypotheses.
+
+% This leads me to a pattern where I would write a tactic, that if a case matching of the proof state of sometimes
+% 30 cases, within a repeat block. And then write my proof with \textbf{;} instead of \textbf{.}.
+
+% This has both the effect of "brute-forcing" the proof, by applying regular patterns until there is no more.
+% And to make the proof naming independent. So I could directly go back to where I was when refactoring.
+
+% This is just a naive pattern to deal with a problem that is much more complex. My superficial knowledge
+% of Coq means that I am not aware of what other patterns exists, but if they do, I would be valuable to share
+% those with the community, and if not, then this is a point that should receive more attention.
+
+% \begin{abstract}
+%    This paper documents an engineer's self-taught journey with the Rocq proof assistant, focusing on the challenges and experiences encountered while learning formal proof techniques, with a limited background in Formal Logic.
+% \end{abstract}
+
+% \section{Introduction}
+% While working as an OCaml software engineer, I encounter a classical problem on data structures which to
+% my surprise, had close to no solution in the literature. The few that I did find were either to complex for me to understand - using higher-level kinding - or required a reworking of the underlyig data structure.
+% This led me to develop a novel algorithm and desirous to move to an academic career, I drafted a paper on the subject in the hope of submitting it.
+% The feedback I received was that modern standards in the field require a formal proof of correctness, build on a proof assistant.
+% Therefore, I embarked on a self-taught journey to learn the Rocq proof assistant, which I had never used before.
+% This paper documents my experiences, challenges, and reflections as an outsider coming in.
+
+% \section{Algorithm : Deletion in functional red-black trees}
+% The algorithm is secondary to the topic of this paper, but since it is the starting point and the leitmotiv for my journey, I will briefly describe it.
+% You should all be familiar with red-black trees, a binary search tree whose nodes are colored - red or black - and a set of invariants that ensure the tree remains balanced.
+% When adding or removing nodes from the tree, you need to perform a series of rotations first to maintain the binary search tree property, and then to maintain the red-black tree invariants.
+
+% This data structure is over 50 years old, and should be covered by any computer science curriculum. But while
+% it is well understood in an imperative setting using mutable pointers, and there are formal proofs of correctness in that setting.
+% In a functional, immutable setting, the situation is different.
+% Okasaki's algorithm~\cite{okasaki_1999} for insertion is well known and the proof is covered in Software Foundations~\cite{Appel:SF3}.
+% However, the dual operation of deletion is not covered.
+
+% \section {Learning to use a proof assistant}
+
+% While I was not a university student, following a class on proof assistants or formal logic at the time,
+% my work was to develop a functional programming language in OCaml for a few years, so I was in a good position
+% compare to let's say a C, Java or Javascript developer.
+% Some of my colleagues talk about Coq from time to time - especially saying how difficult it is to use -
+% so it was on my radar, but I had never used it before.
+
+% \subsection{Finding the right resources}
+
+% The first step was to find the right resources. As a software engineer, I am familiar with learning new languages and tools,
+% and my first reflex is to go to the official website and documentation.
+% On the Coq website, you see the big "Learn" button, which takes you to a page with a list of links to the
+% reference manual. Until today, I though this was the only content on that page, but I just checked and you can actually scroll down to find a list of books
+% sorted by difficulty, so it is probably my fault, but I ended up on the reference manual, which is similar to the OCaml one, in that it is very different
+% from any other language documentation I have seen so far. The main criticism I have is that it is not very accessible to people who are not already familiar with language theory.
+% When languages are aimed for software engineers, the syntax and semantics are given through concrete examples, but here you find a formal description of the
+% grammar and the syntax. The only reason I am able to read it and even now what it is, is because I read a few books on programming languages design and compilers for works.
+% If I had not, I think I would have been completely lost, and that likely the case for many other engineers out there.
+
+% On the one hand, you can argue that Rocq is a tool made by logicians for logicians, and in that case,
+% the reference manual is perfectly fine. On the other hand, if Rocq is intended to reach a wider audience,
+% mathematicians that do not have a background in logic, or software engineers that want to certify their programs,
+% but do not have the time to learn the theory behind it, then along with the reference manual, other accessible resources
+% should be not only provided, but also highlighted on the website.
+
+% As a reference, the Rust programming language is often praised for "The Book", which still cover the language in depth
+% including advanced topics such as ownership, lifetimes, and traits, but in a way that beginners can follow.
+
+% Back to my journey, I ask my colleagues for advice, and they point me to both the Software Foundations series~\cite{Pierce:SF1} and "Certified Programming with Dependent Types"~\cite{CPDT}.
+% \subsection{Software Foundations}
+
+% \section{Finally tackling the problem}
+
+% Unfortunately, I am running out of time and space, but the is the idea of this paper.
+
+%bibliography
+% \newpage
+% \bibliography{rocq-2025_submission}{}
+% \bibliographystyle{abbrv}
+
+
+\end{document}

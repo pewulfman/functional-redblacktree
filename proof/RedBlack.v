@@ -1,8 +1,50 @@
 From Coq Require Import Init.Nat.
 From Coq Require Import Arith.Arith.
 From Coq Require Import Bool.Bool.
+From Coq Require Import Orders.
+From Coq Require Import OrdersFacts.
+Require Import Lia.
 
-(* Tree definition *)
+Ltac inv H := inversion H; clear H; subst.
+
+Declare Module X: OrderedType'.
+Definition T := X.t.
+Definition cmp := X.compare.
+Module Facts := OrderedTypeFacts(X).
+
+Lemma inv_order : forall (x y : T),
+	cmp x y = Gt <-> cmp y x = Lt.
+Proof.
+	intros.
+	split; intro H.
+	- apply Facts.compare_gt_iff in H.
+		apply Facts.compare_lt_iff. assumption.
+	- apply Facts.compare_lt_iff in H.
+		apply Facts.compare_gt_iff. assumption.
+Qed.
+
+Lemma order_trans : forall (x y z : T),
+	cmp x y = Lt -> cmp y z = Lt -> cmp x z = Lt.
+Proof.
+	intros x y z H0 H1.
+	unfold cmp. apply Facts.compare_lt_iff.
+	unfold cmp in H0. apply Facts.compare_lt_iff in H0.
+	unfold cmp in H1. apply Facts.compare_lt_iff in H1.
+	Facts.order.
+Qed.
+
+Corollary order_trans_gt : forall (x y z : T),
+	cmp x y = Gt -> cmp y z = Gt -> cmp x z = Gt.
+Proof.
+	intros x y z H0 H1.
+	apply inv_order.
+	apply order_trans with y;
+	apply inv_order;
+	assumption.
+Qed.
+
+
+(* We define a tree as *)
 Inductive colour : Type := Red | Black.
 Inductive tree (X : Type) :=
 	| Leaf
@@ -11,8 +53,9 @@ Inductive tree (X : Type) :=
 Arguments Leaf {X}.
 Arguments Node {X}.
 
-(* Total ordering of the node *)
-Definition total_order (X : Type) : Type := X -> X -> bool.
+Definition empty_tree (X : Type) : tree X := Leaf.
+
+(* Properties of a red-black tree *)
 
 (* BST properties *)
 Fixpoint ForallT {X : Type} (P: X -> Prop) (t: tree X) : Prop :=
@@ -21,128 +64,69 @@ Fixpoint ForallT {X : Type} (P: X -> Prop) (t: tree X) : Prop :=
   | Node c l v r => P v /\ ForallT P l /\ ForallT P r
   end.
 
-
-Parameter X: Type.
-Parameter cmp : total_order X.
-
-Lemma cmp_trans : forall (a b c : X),
-	cmp a b = true -> cmp b c = true -> cmp a c = true.
-Proof.
-	Admitted.
-
-Lemma cmp_inv : forall (a b : X),
-	cmp a b = true <-> cmp b a = false.
-Proof. Admitted.
-
-Inductive eq : X -> X -> Prop :=
-	| eq_refl : forall x, eq x x.
-
-Inductive eqc : colour -> colour -> Prop :=
-	| eqc_refl : forall c, eqc c c.
-
-Inductive eqt : tree X -> tree X -> Prop :=
-	| eqt_refl : forall t, eqt t t
-	| eqt_node : forall c1 c2 l1 l2 v1 v2 r1 r2,
-		eqc c1 c2 -> eqt l1 l2 -> eq v1 v2 -> eqt r1 r2 ->
-		eqt (Node c1 l1 v1 r1) (Node c2 l2 v2 r2).
-
-
-Inductive BST: tree X -> Prop :=
+Inductive BST {X : Type} {cmp}: tree X -> Prop :=
 | BST_Leaf : BST Leaf
 | BST_Node : forall c l v r,
-    ForallT (fun y => cmp y v = true) l ->
-    ForallT (fun y => cmp v y = true) r ->
+    ForallT (fun y => cmp y v = Lt) l ->
+    ForallT (fun y => cmp y v = Gt) r ->
     BST l ->
     BST r ->
     BST (Node c l v r).
 
-(* Red-black tree properties *)
-	(* root is black *)
+(** Red-black tree properties **)
+
+(* root is black *)
 Inductive IsBlack {X} : tree X -> Prop :=
 	| is_black_leaf : IsBlack Leaf
-	| is_black_node : forall c l r v, c = Black -> IsBlack (Node c l r v).
+	| is_black_node : forall l r v, IsBlack (Node Black l r v).
 
-	(* no two consecutive red *)
-Inductive RedProp {X} : tree X -> Prop :=
-	| red_prop_leaf : RedProp Leaf
-	| red_prop_black_node : forall l r v, RedProp l -> RedProp r -> RedProp (Node Black l v r)
-	| red_prop_red_node : forall l r v, RedProp l -> RedProp r -> IsBlack l -> IsBlack r -> RedProp (Node Red l v r).
+Definition isBlack {X} (t : tree X) : bool :=
+	match t with
+	| Leaf | Node Black _ _ _ => true
+	| Node Red _ _ _ => false
+	end.
 
-	(* black height of left and right tree is equal *)
-Inductive BlackProp_ {X} : tree X -> nat -> Prop :=
-	| black_prop_leaf : forall n, BlackProp_ Leaf n
-	| black_prop_black_node : forall l r v n, BlackProp_ l (S n) -> BlackProp_ r (S n) -> BlackProp_ (Node Black l v r) n
-	| black_prop_red_node : forall l r v n, BlackProp_ l n -> BlackProp_ r n -> BlackProp_ (Node Red l v r) n.
-
-Lemma black_prop_succ : forall (tr : tree X) n,
-	BlackProp_ tr n -> BlackProp_ tr (S n).
-Proof.
-	intros.
-	induction H; constructor; assumption.
-Qed.
-
-Lemma black_prop_pred : forall (tr : tree X) n,
-	BlackProp_ tr (S n) -> BlackProp_ tr n.
-Proof.
-	intros.
-	induction H; constructor; try apply black_prop_succ; assumption.
-Qed.
-
-Lemma black_prop_inv : forall (tr : tree X) n m,
-	BlackProp_ tr n -> BlackProp_ tr m.
-Proof.
-	intros.
-	induction n.
-	- induction m.
-		+ assumption.
-		+ apply black_prop_succ. assumption.
-	- apply IHn. apply black_prop_pred. assumption.
-Qed.
-
-Inductive BlackProp {X} : tree X -> Prop :=
-	| black_prop : forall n tr, BlackProp_ tr n -> BlackProp tr.
-
-
-
-(* Red-black tree definition *)
-
-Definition red_black (tr : tree X) : Prop :=
-	BST tr /\ IsBlack tr /\ RedProp tr /\  BlackProp tr.
+(* no two consecutive red *)
+Inductive RedBlack {X} : tree X -> nat -> Prop :=
+	| rb_leaf : RedBlack Leaf 0
+	| rb_red_node : forall l r v n,
+		RedBlack l n ->
+		RedBlack r n ->
+		IsBlack l ->
+		IsBlack r ->
+		RedBlack (Node Red l v r) n
+	| rb_black_node : forall l r v n,
+		RedBlack l n ->
+		RedBlack r n ->
+		RedBlack (Node Black l v r) (S n).
 
 #[local] Create HintDb db.
 #[local] Hint Constructors colour : db.
-#[local] Hint Constructors eqc : db.
-#[local] Hint Constructors eq : db.
 #[local] Hint Constructors tree : db.
-#[local] Hint Constructors eqt : db.
-#[local] Hint Unfold ForallT : db.
-#[local] Hint Constructors BST : db.
 #[local] Hint Constructors IsBlack : db.
-#[local] Hint Constructors RedProp : db.
-#[local] Hint Constructors BlackProp_ : db.
-#[local] Hint Constructors BlackProp : db.
-#[local] Hint Unfold red_black : db.
+#[local] Hint Constructors RedBlack : db.
 
-Example leaf : forall X cmp,
-	@red_black X cmp Leaf.
+
+Example leaf :
+	@RedBlack T Leaf 0.
 Proof.
 	auto with db.
 Qed.
 
 
 Example trio :
-	@red_black nat ltb (Node Black (Node Black Leaf 1 Leaf) 2 (Node Black Leaf 3 Leaf)).
+	RedBlack (Node Black (Node Black Leaf 1 Leaf) 2 (Node Black Leaf 3 Leaf)) 2.
 Proof.
-	auto 7 with db.
+	auto with db.
 Qed.
 
-Example red_red : forall X  (x y z : X),
-	RedProp (Node Black (Node Red (Node Red Leaf x Leaf) y Leaf) z Leaf) -> False.
+Example red_red : forall X  (x y z : X) n,
+	RedBlack (Node Black (Node Red (Node Red Leaf x Leaf) y Leaf) z Leaf) n -> False.
 Proof.
 	intros.
-	inversion H. subst.
-	inversion H2. subst.
-	inversion H7. discriminate.
+	inv H.
+	inv H4.
+	inv H7.
 Qed.
 
 (* Insertion algorithm *)
@@ -166,17 +150,20 @@ Definition balance {X} (tr: tree X) : tree X :=
 	end.
 
 
-Fixpoint insert_util  {X : Type} (cmp : total_order X) (x: X) tr :=
+Fixpoint insert_util {X} {cmp} (x: X) tr :=
 	match tr with
 	| Leaf => Node Red Leaf x Leaf
 	| Node c l v r =>
-		if cmp x v then balance (Node c (insert_util cmp x l) v r)
-		else balance (Node c l v (insert_util cmp x r))
+		match cmp x v with
+		| Lt => balance (Node c (@insert_util X cmp x l) v r)
+		| Gt => balance (Node c l v (@insert_util X cmp x r))
+		| Eq => Node c l x r
+		end
 	end.
 
-Definition insertion {X} (cmp : total_order X) (x : X) (tr : tree X) : tree X :=
+Definition insertion {X} {cmp} (x : X) (tr : tree X) : tree X :=
 	make_black (
-		insert_util cmp x tr
+		@insert_util X cmp x tr
 	).
 
 #[local] Hint Unfold make_black : db.
@@ -184,1005 +171,1473 @@ Definition insertion {X} (cmp : total_order X) (x : X) (tr : tree X) : tree X :=
 #[local] Hint Unfold insert_util : db.
 #[local] Hint Unfold insertion : db.
 
-Lemma make_black_preserve_ordering : forall tr,
-	BST tr <-> BST (make_black tr).
+(* start proving the RB properties *)
+
+(* The first invariant we want to prove is that the inside insertion leave
+a red-black tree except the root and is child can be read *)
+
+(* For this we need anoter definition *)
+
+Inductive RRBlack {X} : tree X -> nat -> Prop :=
+	| rr_black_node : forall l r v n,
+		RedBlack l n ->
+		RedBlack r n ->
+		RRBlack (Node Red l v r) n
+	| rr_black_black_node : forall l r v n,
+		RedBlack l n ->
+		RedBlack r n ->
+		RRBlack (Node Black l v r) (S n).
+
+#[local] Hint Constructors RRBlack : db.
+
+Lemma rr_rb : forall X (l r : tree X) (v : X) (n : nat),
+	RRBlack (Node Black l v r) n ->
+	RedBlack (Node Black l v r) n.
 Proof.
 	intros.
-	induction tr.
-	- split; auto with db.
-	- unfold make_black. split;
-		intro H; inversion H; subst;
-		constructor; auto with db.
+	inversion H; subst.
+	auto with db.
 Qed.
 
-(* Helpers *)
-Inductive id_when_color_rm {X : Type} : tree X -> tree X -> Prop :=
-	| id_when_color_rm_refl : forall t, id_when_color_rm t t
-	| id_when_color_rm_node : forall c1 c2 l1 l2 r1 r2 v,
-		id_when_color_rm l1 l2 -> id_when_color_rm r1 r2 ->
-		id_when_color_rm (Node c1 l1 v r1) (Node c2 l2 v r2).
-
-#[local] Hint Constructors id_when_color_rm : db.
-
-Lemma ForallT_inv_coloring : forall (X : Type) (P : X -> Prop) (t1 t2 : tree X),
-	id_when_color_rm t1 t2 -> ForallT P t1 -> ForallT P t2.
+Lemma rrb_non_empty : forall X (n : nat),
+	@RRBlack X Leaf n -> False.
 Proof.
 	intros.
-	induction H; auto with db.
-	inversion H0; subst.
-	inversion H3; subst.
-	constructor; auto with db.
+	inversion H.
 Qed.
 
-Lemma BST_inv_coloring : forall (tr1 tr2 : tree X),
-	id_when_color_rm tr1 tr2 -> BST tr1 -> BST tr2.
+Ltac prove_RB :=
+	repeat
+		match goal with
+		| |- _ (match ?x with Eq => _ | Lt => _ | Gt => _ end) _ => destruct x
+		| |- RRBlack _ _ => constructor
+		| |- RedBlack _ _ => constructor
+		| |- _ (match ?c with Red => _ | Black => _ end) _ => destruct c
+		| |- _ (match ?t with Leaf => _ | Node _ _ _ _ => _ end) _ => destruct t
+		| H: RRBlack Leaf _ |- _ => inv H
+		| H: _ (Node _ _ _ _) _ |- _ => inv H
+		| H: RedBlack Leaf _ |- _ => inv H
+		| H: IsBlack (Node Red _ _ _) |- _ => inv H
+		end;
+	auto with db; try lia.
+
+Theorem rr_black : forall (v : T) (t : tree T) (n : nat),
+	RedBlack t n ->
+		RRBlack (@insert_util T cmp v t) n
+  		/\ (IsBlack t -> RedBlack (@insert_util T cmp v t) n).
 Proof.
+	induction t; intro n; split; try intro; inv H;
+	try remember n0 as x; try remember n as x;
+	repeat constructor; simpl;
+	specialize (IHt1 x); specialize (IHt2 x);
+	subst; intuition;
+	prove_RB.
+Qed.
+
+Corollary ins_RB' : forall (t : tree T) (v : T) (n : nat),
+	RedBlack t n ->
+	IsBlack t ->
+	RedBlack (@insert_util T cmp v t) n.
+Proof.
+	intros.
+	apply rr_black; assumption.
+Qed.
+
+Lemma RB_blacken_root : forall (t : tree T) (n : nat),
+	RedBlack t n ->
+		RedBlack (make_black t) n \/ RedBlack (make_black t) (S n).
+Proof.
+	intros. inv H; unfold make_black;
+	try (left; auto with db; assumption);
+	try (right; auto with db).
+Qed.
+
+#[local] Hint Constructors BST : db.
+#[local] Hint Unfold ForallT : db.
+#[local] Hint Unfold make_black : db.
+
+Lemma forall_cmp_trans_lt : forall (t : tree T) (x y : T),
+	ForallT (fun v : T => cmp v x = Lt) t ->
+	cmp x y  = Lt ->
+	ForallT (fun v : T => cmp v y = Lt) t.
+Proof.
+	intros.
+	induction t. simpl. tauto.
+	inv H. destruct H2. intuition.
+	constructor; auto.
+	apply order_trans with x; assumption.
+Qed.
+Lemma forall_cmp_trans_gt : forall (t : tree T) (x y : T),
+	ForallT (fun v : T => cmp v x = Gt) t ->
+	cmp x y  = Gt ->
+	ForallT (fun v : T => cmp v y = Gt) t.
+Proof.
+	intros.
+	induction t. simpl. tauto.
+	inv H. destruct H2. intuition.
+	constructor; auto.
+	apply order_trans_gt with x; assumption.
+Qed.
+
+Lemma forall_cmp_trans_eq : forall (t : tree T) (x y : T) (eq : comparison),
+	ForallT (fun v : T => cmp v x = eq) t ->
+	cmp x y  = Eq ->
+	ForallT (fun v : T => cmp v y = eq) t.
+Proof.
+	intros.
+	induction t. simpl. tauto.
+	destruct eq;
+	inv H; destruct H2; intuition;
+	constructor; auto;
+	apply Facts.compare_eq_iff in H0;
+	rewrite <- H0; assumption.
+Qed.
+
+
+Ltac prove_BST :=
+	repeat
+		match goal with
+		| H : ForallT _ Leaf |- _ => inv H
+		| H : ForallT _ (Node _ _ _ _) |- _ => inv H
+		| H : BST Leaf |- _ => inv H
+		| H : BST (Node _ _ _ _) |- _ => inv H
+		| H : cmp ?x ?y = Lt |- cmp ?y ?x = Gt => apply inv_order
+		| H : cmp ?x ?y = Gt |- cmp ?y ?x = Lt => apply inv_order
+		| H : _ /\ _ |- _ => destruct H
+		| |- BST (match ?t with Leaf => _ | Node _ _ _ _ => _ end) => destruct t
+		| |- BST (match ?c with Red => _ | Black => _ end) => destruct c
+		| |- BST (Node _ _ _ _) => constructor
+		| |- _ /\ _ => split
+		| |- ForallT _ (match ?t with Leaf => _ | Node _ _ _ _ => _ end) => destruct t
+		| |- ForallT _ (match ?c with Red => _ | Black => _ end) => destruct c
+		| |- ForallT _ (Node _ _ _ _) => constructor
+		| H: ForallT (fun _ : T => cmp _ ?x = Gt) ?t
+			, GMP: cmp ?y ?x = Lt
+			|- ForallT (fun _ : T => cmp _ ?y = Gt) ?t => apply (forall_cmp_trans_gt t x y)
+		| H: cmp ?x ?y = Lt,
+			GMP: cmp ?z ?y = Gt
+			|- cmp ?x ?z = Lt => apply (order_trans x y z)
+		| H: ForallT (fun _ : T => cmp _ ?x = Lt) ?t
+			, GMP: cmp ?y ?x = Gt
+			|- ForallT (fun _ : T => cmp _ ?y = Lt) ?t => apply (forall_cmp_trans_lt t x y)
+		| H: cmp ?x ?y = Gt,
+			GMP: cmp ?z ?y = Lt
+			|- cmp ?x ?z = Gt => apply (order_trans_gt x y z)
+		end;
+	auto with db; try lia.
+
+Theorem BST_balance : forall x (t : tree T),
+	@BST T cmp t -> (@BST T cmp (balance t)
+	/\ (
+		(ForallT (fun y : T => cmp y x = Lt) t ->
+		ForallT (fun y: T => cmp y x = Lt) (balance t))
+	/\ (ForallT (fun y : T => cmp y x = Gt) t ->
+		ForallT (fun y: T => cmp y x = Gt) (balance t))
+		)).
+Proof.
+	intros.
+	induction t. auto with db.
+	repeat split; intros;
+	simpl; prove_BST.
+Qed.
+
+Theorem BST_ins : forall (t : tree T) (v : T) (x : T),
+	@BST T cmp t -> (@BST T cmp (@insert_util T cmp v t)
+	/\ (cmp v x = Lt ->
+		ForallT (fun y : T => cmp y x = Lt) t ->
+		ForallT (fun y: T => cmp y x = Lt) (@insert_util T cmp v t)
+		)
+	/\ (
+		cmp v x = Gt ->
+		ForallT (fun y : T => cmp y x = Gt) t ->
+		ForallT (fun y: T => cmp y x = Gt) (@insert_util T cmp v t)
+		)
+	).
+
+Proof.
+	intros.
+	generalize dependent x.
+	induction t.
 	intro.
-	induction tr1; auto with db.
-	- intros. inversion H; auto with db.
-	- intros. inversion H; subst; inversion H0; subst;
-		constructor; auto with db.
-		+ apply (ForallT_inv_coloring X (fun y0 : X => cmp y0 v = true) tr1_1 l2).
-			assumption. assumption.
-		+ apply (ForallT_inv_coloring X (fun y0 : X => cmp v y0 = true) tr1_2 r2);
+	simpl. repeat split; auto with db.
+	split.
+	- unfold insert_util. fold (@insert_util T).
+		destruct (cmp v v0) eqn:cmpv.
+		+ inv H. constructor; auto with db;
+			apply forall_cmp_trans_eq with v0; auto with db;
+			apply Facts.compare_eq_iff in cmpv;
+			rewrite <- cmpv; unfold cmp; apply Facts.compare_refl.
+		+ inv H. intuition.
+			set (insert_util v t1) in *.
+			specialize (H v0). intuition.
+			apply (BST_balance v). constructor; auto with db.
+		+ inv H. intuition.
+			set (insert_util v t2) in *.
+			specialize (H0 v0). intuition.
+			apply (BST_balance v). constructor; auto with db.
+	- split; intros; unfold insert_util; fold (@insert_util T);
+		destruct (cmp v v0) eqn:cmpv.
+		+ prove_BST.
+		+ inv H. intuition.
+			set (insert_util v t1) in *.
+			assert (@BST T cmp (Node c t v0 t2)) as Hbst.
+			{ specialize (H v0).  prove_BST. }
+			specialize (H x).
+			intuition.
+			pose proof (BST_balance x (Node c t v0 t2)).
+			intuition.
+			apply H10.
+			prove_BST.
+		+ inv H. intuition.
+			set (insert_util v t2) in *.
+			assert (@BST T cmp (Node c t1 v0 t)) as Hbst.
+			{ specialize (H2 v0).  prove_BST. }
+			specialize (H2 x).
+			intuition.
+			pose proof (BST_balance x (Node c t1 v0 t)).
+			intuition.
+			apply H10.
+			prove_BST.
+		+ prove_BST.
+		+ inv H. intuition.
+			set (insert_util v t1) in *.
+			assert (@BST T cmp (Node c t v0 t2)) as Hbst.
+			{ specialize (H v0).  prove_BST. }
+			specialize (H x).
+			intuition.
+			pose proof (BST_balance x (Node c t v0 t2)).
+			intuition.
+			apply H12.
+			prove_BST.
+		+ inv H. intuition.
+			set (insert_util v t2) in *.
+			assert (@BST T cmp (Node c t1 v0 t)) as Hbst.
+			{ specialize (H2 v0).  prove_BST. }
+			specialize (H2 x).
+			intuition.
+			pose proof (BST_balance x (Node c t1 v0 t)).
+			intuition.
+			apply H12.
+			prove_BST.
+Qed.
+
+Lemma BST_make_black : forall (t : tree T),
+	@BST T cmp t -> @BST T cmp (make_black t).
+Proof.
+	intros.
+	induction H.
+	- simpl. auto with db.
+	- unfold make_black. constructor; auto with db.
+Qed.
+
+Theorem BST_insertion : forall (t : tree T) (v : T),
+	@BST T cmp t -> @BST T cmp (@insertion T cmp v t).
+Proof.
+	intros.
+	unfold insertion.
+	apply BST_make_black.
+	apply BST_ins; auto.
+Qed.
+
+Definition RedBlacktree {X} {cmp} (t : tree X) : Prop :=
+	@BST X cmp t /\
+	(exists n, RedBlack t n) /\ IsBlack t.
+
+#[local] Hint Unfold RedBlacktree : db.
+#[local] Hint Immediate rr_black : db.
+#[local] Hint Immediate ins_RB' : db.
+#[local] Hint Immediate RB_blacken_root : db.
+
+Lemma make_black_is_black : forall (t : tree T),
+	IsBlack (make_black t).
+Proof.
+	intros.
+	destruct t;
+	unfold make_black;
+	auto with db.
+Qed.
+
+Theorem RB_inv: forall (t : tree T) (v : T),
+	@RedBlacktree T cmp t -> @RedBlacktree T cmp (@insertion T cmp v t) .
+Proof.
+	intros.
+	destruct H. destruct H0.
+	unfold RedBlacktree.
+	repeat split.
+	- apply BST_insertion. assumption.
+	-	unfold insertion.
+		inversion H0.
+		apply (ins_RB' t v) in H2.
+		apply RB_blacken_root in H2.
+		destruct H2.
+		+ exists x. assumption.
+		+ exists (S x). assumption.
+		+ assumption.
+	- unfold insertion.
+		apply make_black_is_black.
+Qed.
+
+
+(* Deletion algorithm *)
+Fixpoint max {X} v (t : tree X) : X :=
+	match t with
+	| Leaf => v (* only if tree is empty*)
+	| Node _ _ x r => max x r
+	end.
+
+Definition redden {X} (t : tree X) : tree X :=
+	match t with
+	| Leaf => Leaf (* impossible *)
+	| Node _ a x b => Node Red a x b
+	end.
+
+(* Balancing function *)
+
+Definition balance_left {X} (c : colour) (lS : tree X * bool) (v : X) (r : tree X) : (tree X * bool) :=
+	match lS with (l, isShorter) =>
+		if isShorter then
+			match c, l, v, r with
+			| Black, a, x,  Node Red (Node Black b y c) z d
+			=> (Node Black (Node Black a x b) y (balance (Node Black c z (redden d))),false)
+			| k, a, x, Node Black (Node Red b y c) z d
+			| k, a, x, Node Black b y (Node Red c z d)
+			=> (Node k (Node Black a x b) y (Node Black c z d), false)
+			| Black, x, y, Node Black c z d
+			=> (Node Black x y (Node Red c z d), true)
+			| Red, x, y, Node Black c z d
+			=> (Node Black x y (Node Red c z d), false)
+			| _, _, _, _ => (Node c l v r, false)
+			end
+		else
+			(Node c l v r, false)
+		end.
+
+Definition balance_right {X} (c : colour) (l : tree X) (v : X) (rS : tree X * bool) : (tree X * bool) :=
+	match rS with (r, isShorter) =>
+		if isShorter then
+			match c, l, v, r with
+			| Black, Node Red a x (Node Black b y c), z, d
+			=> (Node Black (balance (Node Black (redden a) x b)) y (Node Black c z d), false)
+			| k, Node Black (Node Red a x b) y c, z, d
+			| k, Node Black a x (Node Red b y c), z, d
+			=> (Node k (Node Black a x b) y (Node Black c z d), false)
+			| Black, Node Black a x b, y, z
+			=> (Node Black (Node Red a x b) y z, true)
+			| Red, Node Black a x b, y, z
+			=> (Node Black (Node Red a x b) y z, false)
+			| _, _, _, _ => (Node c l v r, false)
+			end
+		else
+			(Node c l v r, false)
+		end.
+
+Fixpoint remove_rightmost {X} (t: tree X) : (tree X * bool) :=
+	match t with
+	| Leaf => (Leaf, false)
+	| Node Red l _ Leaf => (l, false)
+	| Node Black l _ Leaf => (make_black l, isBlack l)
+	| Node c l v r =>
+		balance_right c l v (remove_rightmost r)
+	end.
+
+Definition remove {X} (t : tree X) : (tree X * bool) :=
+	match t with
+	| Leaf => (Leaf, false) (* impossible *)
+	| Node Red Leaf _ Leaf => (Leaf, false)
+	| Node Black Leaf _ Leaf => (Leaf, true)
+
+	| Node Black (Node Red Leaf v Leaf) _ Leaf
+	| Node Black Leaf _ (Node Red Leaf v Leaf)
+	=> (Node Black Leaf v Leaf, false)
+
+	| Node c l v r =>
+		let v := max v l in
+		let l := remove_rightmost l in
+		balance_left c l v r
+	end.
+
+Fixpoint del (t : tree T) (v : T) : (tree T * bool) :=
+	match t with
+	| Leaf => (Leaf, false) (* nothing to delete *)
+	| Node c l x r =>
+		match cmp v x with
+		| Lt => let l := del l v in balance_left c l x r
+		| Gt => let r := del r v in balance_right c l x r
+		| Eq => remove t
+		end
+	end.
+
+Definition delete t v := match (del t v) with (t, _) => t end.
+
+#[local] Hint Unfold delete : db.
+#[local] Hint Unfold del : db.
+#[local] Hint Unfold remove : db.
+#[local] Hint Unfold remove_rightmost : db.
+#[local] Hint Unfold balance_left : db.
+#[local] Hint Unfold balance_right : db.
+#[local] Hint Unfold max : db.
+
+(* Proving that the deletion preserve BST *)
+
+Lemma BST_redden : forall x (t : tree T),
+	@BST T cmp t -> (@BST T cmp (redden t)
+	/\ (
+		(ForallT (fun y : T => cmp y x = Lt) t ->
+		ForallT (fun y: T => cmp y x = Lt) (redden t))
+	/\ (ForallT (fun y : T => cmp y x = Gt) t ->
+		ForallT (fun y: T => cmp y x = Gt) (redden t))
+		)).
+Proof.
+	intros.
+	induction t. auto with db.
+	repeat split; intros;
+	simpl; prove_BST.
+Qed.
+
+Lemma max_gt : forall x y c l v r,
+	ForallT (fun y : T => cmp y x = Lt) (Node c l v r) ->
+	cmp x (max y (Node c l v r)) = Gt.
+Proof.
+	intros x y c l v r.
+	generalize dependent v.
+	generalize dependent l.
+	generalize dependent c.
+	generalize dependent y.
+	generalize dependent x.
+	induction r.
+	- intros. inv H. apply inv_order in H0. auto with db.
+	- intros.
+		specialize (IHr2 x v c r1 v).
+		simpl in *. intuition.
+Qed.
+
+
+Lemma lmax : forall x y c l v r,
+	@BST T cmp (Node c l v r) ->
+	cmp x v = Lt ->
+	cmp x (max y (Node c l v r)) = Lt .
+Proof.
+	intros.
+	generalize dependent v.
+	generalize dependent l.
+	generalize dependent c.
+	generalize dependent y.
+	generalize dependent x.
+	induction r.
+	- auto with db.
+	- intros. simpl.
+		inv H. inv H6.
+		specialize (IHr2 x y c r1 v). intuition.
+		apply inv_order in H. apply (order_trans x v0 v) in H0;
+		destruct r2; auto with db.
+Qed.
+
+Lemma BST_max_gt : forall x t,
+		cmp x (max x t) = Gt ->
+		ForallT (fun y : T => cmp y x = Gt) t ->
+		ForallT (fun y: T => cmp y (max x t) = Gt) t.
+Proof.
+	intros.
+	apply forall_cmp_trans_gt with x; auto with db.
+Qed.
+
+Lemma BST_max_lt : forall x t,
+		cmp x (max x t) = Lt ->
+		ForallT (fun y : T => cmp y x = Lt) t ->
+		ForallT (fun y: T => cmp y (max x t) = Lt) t.
+Proof.
+	intros.
+	apply forall_cmp_trans_lt with x; auto with db.
+Qed.
+
+
+Ltac prove_BST_del :=
+	repeat
+		match goal with
+		| H : ForallT _ Leaf |- _ => inv H
+		| H : ForallT _ (Node _ _ _ _) |- _ => inv H
+		| H : BST Leaf |- _ => inv H
+		| H : BST (Node _ _ _ _) |- _ => inv H
+		| H : cmp ?x ?y = Lt |- cmp ?y ?x = Gt => apply inv_order
+		| H : cmp ?x ?y = Gt |- cmp ?y ?x = Lt => apply inv_order
+		| H : _ /\ _ |- _ => destruct H
+		| |- BST (fst (match ?t with Leaf => _ | Node _ _ _ _ => _ end)) => destruct t
+		| |- BST (fst (match ?c with Red => _ | Black => _ end)) => destruct c
+		| |- BST (fst (if ?b then _ else _ )) => destruct b
+		| |- BST (fst (_, _)) => unfold fst
+		| |- BST (balance _) => apply BST_balance
+		| |- BST (redden _) => apply BST_redden
+		| |- BST (Node _ _ _ _) => constructor
+		| |- ForallT _ (fst (match ?t with Leaf => _ | Node _ _ _ _ => _ end)) => destruct t
+		| |- ForallT _ (fst (match ?c with Red => _ | Black => _ end)) => destruct c
+		| |- ForallT _ (fst (if ?b then _ else _ )) => destruct b
+		| |- ForallT _ (fst (_, _)) => unfold fst
+		| |- ForallT _ (balance _) => apply BST_balance
+		| |- ForallT _ (redden _) => apply BST_redden
+		| |- ForallT _ (Node _ _ _ _) => constructor
+		| |- _ /\ _ => split
+		| H: ForallT (fun _ : T => cmp _ ?x = Gt) ?t
+			, GMP: cmp ?y ?x = Lt
+			|- ForallT (fun _ : T => cmp _ ?y = Gt) ?t => apply (forall_cmp_trans_gt t x y)
+		| H: cmp ?x ?y = Lt,
+			GMP: cmp ?z ?y = Gt
+			|- cmp ?x ?z = Lt => apply (order_trans x y z)
+		| H: ForallT (fun _ : T => cmp _ ?x = Lt) ?t
+			, GMP: cmp ?y ?x = Gt
+			|- ForallT (fun _ : T => cmp _ ?y = Lt) ?t => apply (forall_cmp_trans_lt t x y)
+		| H: cmp ?x ?y = Gt,
+			GMP: cmp ?z ?y = Lt
+			|- cmp ?x ?z = Gt => apply (order_trans_gt x y z)
+		end;
+	auto with db; try lia.
+
+Theorem BST_bal_right : forall x c l v (rb : tree T * bool),
+	@BST T cmp (Node c l v (fst rb)) -> (@BST T cmp (fst (balance_right c l v rb))
+	/\ (
+		(ForallT (fun y : T => cmp y x = Lt) (Node c l v (fst rb)) ->
+		ForallT (fun y: T => cmp y x = Lt) (fst(balance_right c l v rb)))
+	/\ (ForallT (fun y : T => cmp y x = Gt) (Node c l v (fst rb)) ->
+		ForallT (fun y: T => cmp y x = Gt) (fst(balance_right c l v rb)))
+		)).
+Proof.
+	intros. destruct rb.
+	repeat split; intros;
+	unfold balance_right; prove_BST_del.
+Qed.
+
+Theorem BST_bal_left : forall x c (lb : tree T * bool) v r,
+	@BST T cmp (Node c (fst lb) v r) -> (@BST T cmp (fst (balance_left c lb v r))
+	/\ (
+		(ForallT (fun y : T => cmp y x = Lt) (Node c (fst lb) v r) ->
+		ForallT (fun y: T => cmp y x = Lt) (fst (balance_left c lb v r)))
+	/\ (ForallT (fun y : T => cmp y x = Gt) (Node c (fst lb) v r) ->
+		ForallT (fun y: T => cmp y x = Gt) (fst (balance_left c lb v r)))
+		)).
+Proof.
+	intros. destruct lb.
+	repeat split; intros;
+	unfold balance_left; prove_BST_del.
+Qed.
+
+Theorem BST_make_black_2 : forall x t,
+	@BST T cmp t -> (@BST T cmp (make_black t)
+	/\
+		(ForallT (fun y : T => cmp y x = Lt) t ->
+		ForallT (fun y: T => cmp y x = Lt) (make_black t)
+		)
+	/\ (
+		ForallT (fun y : T => cmp y x = Gt) t ->
+		ForallT (fun y: T => cmp y x = Gt) (make_black t)
+		)).
+Proof.
+	intros.
+	induction H.
+	- simpl. auto with db.
+	- unfold make_black. constructor; auto with db.
+Qed.
+
+
+Theorem BST_remove_rightmost : forall x (t : tree T) ,
+	@BST T cmp t -> (@BST T cmp (fst (remove_rightmost t))
+	/\ (
+		ForallT (fun y : T => cmp y x = Lt) t ->
+		ForallT (fun y: T => cmp y x = Lt) (fst (remove_rightmost t))
+		)
+	/\ (
+		ForallT (fun y : T => cmp y x = Gt) t ->
+		ForallT (fun y: T => cmp y x = Gt) (fst (remove_rightmost t))
+		)
+	).
+Proof.
+	intros x t.
+	generalize dependent x.
+	induction t.
+	-  simpl. auto with db.
+	- repeat split; intros.
+		+ simpl. destruct t2.
+			* destruct c; simpl; inv H;
+				try apply BST_make_black_2; assumption.
+			* inv H. specialize (IHt2 v). intuition.
+				assert (@BST T cmp( Node c t1 v (fst (remove_rightmost (Node c0 t2_1 v0 t2_2))))).
+				{ constructor; auto with db. }
+				apply (BST_bal_right x c t1 v (remove_rightmost (Node c0 t2_1 v0 t2_2))) in H2.
+				destruct H2. destruct c; assumption.
+		+ simpl. destruct t2.
+			* destruct c; simpl; inv H; inv H0;
+				try apply BST_make_black_2; intuition.
+			*	inv H.
+				inv H0. intuition.
+				assert (@BST T cmp( Node c t1 v (fst (remove_rightmost (Node c0 t2_1 v0 t2_2))))).
+				{
+					specialize (IHt2 v).
+					apply IHt2 in H8.
+					inv H8. inv H3.
+					constructor; auto with db.
+				}
+				specialize (IHt2 x). intuition.
+				apply (BST_bal_right x c t1 v (remove_rightmost (Node c0 t2_1 v0 t2_2))) in H1.
+				inv H1. inv H11.
+				destruct c; apply H1; constructor; auto with db.
+		+ simpl. destruct t2.
+			*	destruct c; simpl; inv H; inv H0;
+				try apply BST_make_black_2; intuition.
+			*	inv H.
+				inv H0. intuition.
+				assert (@BST T cmp( Node c t1 v (fst (remove_rightmost (Node c0 t2_1 v0 t2_2))))).
+				{
+					specialize (IHt2 v).
+					apply IHt2 in H8.
+					inv H8. inv H3.
+					constructor; auto with db.
+				}
+				specialize (IHt2 x). intuition.
+				apply (BST_bal_right x c t1 v (remove_rightmost (Node c0 t2_1 v0 t2_2))) in H1.
+				inv H1. inv H11.
+				destruct c; apply H12; constructor; auto with db.
+Qed.
+
+Lemma forall_inv : forall (x : T) (t : tree T),
+	ForallT (fun y : T => cmp x y = Lt) t <->
+	ForallT (fun y : T => cmp y x = Gt) t.
+Proof.
+	intros.
+	induction t.
+	- intros. simpl. tauto.
+	- intros. split.
+		+ intros. inv H. inv H1.
+			apply IHt1 in H. apply IHt2 in H2.
+			apply inv_order in H0.
+			constructor; auto with db.
+		+ intros. inv H. inv H1.
+			apply IHt1 in H. apply IHt2 in H2.
+			apply inv_order in H0.
+			constructor; auto with db.
+Qed.
+
+Inductive NonEmpty {X} : tree X -> Prop :=
+	| non_empty_node : forall c l v r, NonEmpty (Node c l v r).
+
+Ltac prove_max_bal :=
+	repeat
+		match goal with
+		| |- _ = max _ (fst (match ?t with Leaf => _ | Node _ _ _ _ => _ end)) => destruct t
+		| |- _ = max _ (fst (match ?c with Red => _ | Black => _ end)) => destruct c
+		| |- _ = max _ (fst (if ?b then _ else _ )) => destruct b
+		| |- _ = max _ (fst (_, _)) => unfold fst
+		end;
+	auto with db; try lia.
+
+Lemma BST_max_bal_right : forall x c l v (rb : tree T * bool),
+	(max v (fst rb)) = (max x (fst (balance_right c l v rb))).
+Proof.
+	intros.
+	generalize dependent v.
+	generalize dependent l.
+	generalize dependent c.
+	generalize dependent x.
+	destruct rb as (r,b).
+	induction r.
+	- intros. simpl. prove_max_bal.
+	- intros. specialize (IHr2 x c r1 v). simpl in IHr2.
+		simpl. rewrite IHr2. prove_max_bal.
+Qed.
+
+Lemma BST_max_remove_rightmost : forall x c l v r,
+	@BST T cmp (Node c l v r) ->
+	ForallT (fun y : T => cmp x y = Lt) (Node c l v r) ->
+	cmp (max x (fst (remove_rightmost (Node c l v r))))
+	(max x (Node c l v r)) = Lt.
+Proof.
+	intros x c l v r.
+	generalize dependent v.
+	generalize dependent l.
+	generalize dependent c.
+	generalize dependent x.
+	induction r.
+	- intros. generalize dependent x.
+		induction l; intros.
+		+ destruct c; simpl; inv H0; assumption.
+		+
+		 assert (@BST T cmp (Node c l2 v Leaf)).
+			{ prove_BST. }
+			apply IHl2 with v0 in H1.
+			* simpl. simpl in H1.
+				destruct c,c0; auto with db;
+				simpl in *; destruct l2; auto with db.
+			* inv H. inv H6. inv H8.
+			 constructor; auto with db.
+			 split; auto with db.
+			 apply forall_inv. assumption.
+	- intros.
+		specialize (IHr2 v0 c r1 v).
+			inv H. apply forall_inv in H6. intuition .
+			simpl in H1. simpl.
+			rewrite (BST_max_bal_right x c0 l) in H1.
+			destruct c0; assumption.
+Qed.
+
+Lemma forall_max : forall (x : T) (t : tree T),
+	@BST T cmp t ->
+	ForallT (fun y : T => cmp y (max x t) = Lt) (fst (remove_rightmost t)).
+Proof.
+	intros. generalize dependent x.
+	induction t. intro. simpl. tauto.
+	inv H. intuition.
+	simpl.
+	destruct c, t2.
+	- auto with db.
+	- apply BST_bal_right.
+		* constructor; auto with db;
+			 apply (BST_remove_rightmost v) in H7;
+			 prove_BST_del.
+		*	specialize (H0 v).
+			constructor; auto with db.
+			apply lmax. assumption.
+			inv H5. apply inv_order. assumption.
+			split. apply forall_cmp_trans_lt with v.
+			assumption. apply lmax. assumption.
+			inv H5. apply inv_order. assumption.
+			assumption.
+	- simpl. apply (BST_make_black_2 v) in H6. intuition.
+	- apply BST_bal_right.
+		* constructor; auto with db;
+			 apply (BST_remove_rightmost v) in H7;
+			 prove_BST_del.
+		*	specialize (H0 v).
+			constructor; auto with db.
+			apply lmax. assumption.
+			inv H5. apply inv_order. assumption.
+			split. apply forall_cmp_trans_lt with v.
+			assumption. apply lmax. assumption.
+			inv H5. apply inv_order. assumption.
 			assumption.
 Qed.
 
+Theorem BST_remove : forall x (t : tree T),
+	@BST T cmp t -> (@BST T cmp (fst (remove t))
+	/\ (
+		ForallT (fun y : T => cmp y x = Lt) t ->
+		ForallT (fun y: T => cmp y x = Lt) (fst (remove t))
+		)
+	/\ (
+		ForallT (fun y : T => cmp y x = Gt) t ->
+		ForallT (fun y: T => cmp y x = Gt) (fst (remove t))
+		)
+	).
+Proof.
+	intros. generalize dependent x.
+	induction t.
+	intros. simpl. auto with db.
+	intros. repeat split; intros.
+	- unfold remove.
+		inversion H; subst. intuition.
+		apply (BST_remove_rightmost v t1) in H6. intuition.
+		set (max v t1) as a.
+		simpl. prove_BST_del.
+		+ simpl. auto with db.
+		+ apply (BST_bal_left v).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+		+ apply (BST_bal_left v).
+			prove_BST_del.
+		+ apply (BST_bal_left v).
+			prove_BST_del.
+		+ apply (BST_bal_left v).
+			prove_BST_del.
+		+ apply (BST_bal_left v).
+			prove_BST_del.
+		+ apply (BST_bal_left v).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+		+ apply (BST_bal_left v).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+		+ apply (BST_bal_left v).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+	-	inversion H; subst. intuition.
+		simpl.
+		apply (BST_remove_rightmost v t1) in H7. intuition.
+		set (max v t1) as a.
+		simpl. prove_BST_del.
+		+ simpl. auto with db.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply max_gt.
+			constructor; auto with db.
+			apply forall_cmp_trans_lt with v; assumption.
+		+ apply (BST_bal_left x);
+			prove_BST_del.
+		+ apply (BST_bal_left x);
+			prove_BST_del.
+		+ apply (BST_bal_left x);
+			prove_BST_del.
+		+ apply (BST_bal_left x);
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			constructor; auto with db.
+			unfold a. apply max_gt.
+			constructor; auto with db.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply max_gt.
+			constructor; auto with db.
+			apply forall_cmp_trans_lt with v; assumption.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply max_gt.
+			constructor; auto with db.
+			apply forall_cmp_trans_lt with v; assumption.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply max_gt.
+			constructor; auto with db.
+			apply forall_cmp_trans_lt with v; assumption.
+	-	inversion H; subst. intuition.
+		simpl.
+		apply (BST_remove_rightmost v t1) in H7. intuition.
+		set (max v t1) as a.
+		simpl. prove_BST_del.
+		+ simpl. auto with db.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply lmax.
+			constructor; auto with db.
+			apply inv_order. assumption.
+			apply BST_remove_rightmost;
+			prove_BST_del.
+		+ apply (BST_bal_left x);
+			prove_BST_del.
+		+ apply (BST_bal_left x);
+			prove_BST_del.
+		+ apply (BST_bal_left x);
+			prove_BST_del.
+		+ apply (BST_bal_left x);
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			constructor; auto with db.
+			unfold a. apply max_gt.
+			constructor; auto with db.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply lmax.
+			constructor; auto with db.
+			apply inv_order. assumption.
+			apply BST_remove_rightmost;
+			prove_BST_del.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply lmax.
+			constructor; auto with db.
+			apply inv_order. assumption.
+			apply BST_remove_rightmost;
+			prove_BST_del.
+		+ apply (BST_bal_left x).
+			constructor; auto with db.
+			apply forall_max.
+			constructor; auto with db.
+			apply forall_cmp_trans_gt with v.
+			assumption. unfold a. apply max_gt.
+			constructor; auto with db.
+			prove_BST_del.
+			apply inv_order. apply lmax.
+			constructor; auto with db.
+			apply inv_order. assumption.
+			apply BST_remove_rightmost;
+			prove_BST_del.
+Qed.
 
-Inductive rotation {X: Type} : tree X -> tree X -> Prop :=
-	| rot_left : forall cx1 cx2 cy1 cy2 a x b y c,
-		rotation (Node cy1 (Node cx1 a x b) y c) (Node cx2 a x (Node cy2 b y c))
-	| rot_right : forall cx1 cx2 cy1 cy2 a x b y c,
-		rotation (Node cx1 a x (Node cy1 b y c)) (Node cy2 (Node cx2 a x b) y c).
 
-#[local] Hint Constructors rotation : db.
-Lemma ForallT_impl : forall (X : Type) (P Q : X -> Prop) (t : tree X),
-	ForallT P t -> (forall x, P x -> Q x) -> ForallT Q t.
+Theorem BST_del : forall u (x : T) (t : tree T),
+	@BST T cmp t -> (@BST T cmp (fst (del t x))
+	/\ (
+		ForallT (fun y : T => cmp y u = Lt) t ->
+		ForallT (fun y: T => cmp y u = Lt) (fst (del t x))
+		)
+	/\ (
+		ForallT (fun y : T => cmp y u = Gt) t ->
+		ForallT (fun y: T => cmp y u = Gt) (fst (del t x))
+		)
+	).
+Proof.
+	intros.
+	generalize dependent u.
+	generalize dependent x.
+	induction t. simpl. auto with db.
+	intros.
+	unfold del. fold del. destruct (cmp x v).
+	- apply (BST_remove u) in H. intuition.
+	- repeat split; intros.
+		+ prove_BST_del. intuition.
+			specialize (H x v). intuition.
+			apply (BST_bal_left u c (del t1 x) v t2); prove_BST_del.
+		+ prove_BST_del. intuition.
+			apply (BST_bal_left u c (del t1 x) v t2); prove_BST_del.
+			* specialize (H2 x v). intuition.
+			* specialize (H2 x v). intuition.
+			* specialize (H2 x u). intuition.
+		+ prove_BST_del. intuition.
+			apply (BST_bal_left u c (del t1 x) v t2); prove_BST_del.
+			* specialize (H2 x v). intuition.
+			* specialize (H2 x v). intuition.
+			* specialize (H2 x u). intuition.
+	- repeat split; intros.
+		+ prove_BST_del. intuition.
+			specialize (H0 x v). intuition.
+			apply (BST_bal_right u c t1 v (del t2 x)); prove_BST_del.
+		+ prove_BST_del. intuition.
+			apply (BST_bal_right u c t1 v (del t2 x)); prove_BST_del.
+			* specialize (H3 x v). intuition.
+			* specialize (H3 x v). intuition.
+			* specialize (H3 x u). intuition.
+		+ prove_BST_del. intuition.
+			apply (BST_bal_right u c t1 v (del t2 x)); prove_BST_del.
+			* specialize (H3 x v). intuition.
+			* specialize (H3 x v). intuition.
+			* specialize (H3 x u). intuition.
+Qed.
+
+Theorem BST_delete : forall (x : T) (t : tree T),
+	@BST T cmp t -> @BST T cmp (delete t x).
+Proof.
+	intros.
+	unfold delete.
+	apply BST_del; assumption.
+Qed.
+
+
+(* Proving that RedBlack property are preserved *)
+Lemma bal_right_black_false : forall l v r n,
+	RedBlack l n ->
+	RedBlack r n ->
+	let (t, b) := (balance_right Black l v (r,false)) in
+	RedBlack t (S n) /\ b = false /\ @IsBlack T t.
+Proof.
+	intros. simpl. split;
+	auto with db.
+Qed.
+
+Ltac prove_RB_bal_right :=
+	repeat
+		match goal with
+		| H: RedBlack Leaf _ |- _ => inv H
+		| H: RedBlack (Node _ _ _ _) _ |- _ => inv H
+		| H: IsBlack (Node ?c _ _ _) |- _ => inv H
+		| |- let (_,_) := match ?t with Leaf => _ | Node _ _ _ _ => _ end in _ => destruct t
+		| |- let (_,_) := match ?c with Red => _ | Black => _ end in _ => destruct c
+		| |- RedBlack _ _ => constructor
+		| |- _ /\ _ => split
+		| |- RedBlack (match redden ?t with Leaf => _ | Node _ _ _ _ => _ end) _ => destruct t; simpl
+		| |- RedBlack (match ?t with Leaf => _ | Node _ _ _ _ => _ end) _ => destruct t
+		| |- RedBlack (match ?c with Red => _ | Black => _ end) _ => destruct c
+		end;
+	auto with db; try lia.
+
+Lemma bal_right_black_true : forall l v r n,
+	RedBlack l (S n) ->
+	RedBlack r n ->
+	let (t, b) := (balance_right Black l v (r,true)) in
+	match l with
+	| Node Black (Node Black _ _ _ | Leaf) _ (Node Black _ _ _ | Leaf)
+		=> RedBlack t (S n) /\ b = true
+	| _ => RedBlack t (S (S n)) /\ b = false
+	end /\ @IsBlack T t.
+Proof.
+	intros. simpl.
+	prove_RB_bal_right.
+Qed.
+
+Corollary bal_right_black : forall l x r (b: bool) n,
+	(if b then RedBlack r n else RedBlack r (S n))
+	-> RedBlack l (S n)
+	-> let (t, short) := balance_right Black l x (r,b) in
+	(if short then RedBlack t (S n) else RedBlack t (S (S n))
+	)/\ @IsBlack T t.
+Proof.
+	intros.
+	destruct b.
+	-	pose proof bal_right_black_true as P.
+		specialize (P l x r n).
+		intuition.
+		destruct (balance_right Black l x (r, true)).
+		inv H2. split. 2: assumption.
+		destruct l. inv H1; assumption.
+		destruct c. inv H1; assumption.
+		destruct l1,l2. inv H1; assumption.
+		destruct c. inv H1; assumption.
+		inv H1; assumption.
+		destruct c. inv H1; assumption.
+		inv H1; assumption.
+		destruct c. inv H1; assumption.
+		destruct c0. inv H1; assumption.
+		inv H1; assumption.
+	-	pose proof bal_right_black_false as P.
+		specialize (P l x r (S n)). intuition.
+		destruct (balance_right Black l x (r, false)).
+		inv H2. inv H3. split; assumption.
+Qed.
+
+Lemma bal_right_red_false : forall l v r n,
+	RedBlack l n ->
+	IsBlack l ->
+	RedBlack r n ->
+	IsBlack r ->
+	let (t, b) := (balance_right Red l v (r,false)) in
+	@RedBlack T t n /\ b = false.
+Proof.
+	intros. simpl.
+	prove_RB_bal_right.
+Qed.
+
+
+Lemma bal_right_red_true : forall l v r n,
+	RedBlack l (S n) ->
+	IsBlack l ->
+	RedBlack r n ->
+	let (t, b) := (balance_right Red l v (r,true)) in
+	@RedBlack T t (S n) /\ b = false.
+Proof.
+	intros. simpl.
+	prove_RB_bal_right.
+Qed.
+
+Corollary bal_right_red : forall l x r (b: bool) n,
+	(if b then RedBlack r n else RedBlack r (S n))
+	-> RedBlack l (S n)
+	-> IsBlack l
+	-> IsBlack r
+	-> let (t, short) := balance_right Red l x (r,b) in
+	(if short then RedBlack t n else @RedBlack T t (S n)
+	).
+Proof.
+	intros.
+	destruct b.
+	- pose proof bal_right_red_true as P.
+		specialize (P l x r n).
+		intuition.
+		destruct (balance_right Red l x (r, true)).
+		inv H3. assumption.
+	- pose proof bal_right_red_false as P.
+		specialize (P l x r (S n)).
+		intuition.
+		destruct (balance_right Red l x (r, false)).
+		inv H4. assumption.
+Qed.
+
+
+Ltac prove_RB_rrm :=
+	repeat
+	 	match goal with
+		| |- RedBlack _ _ => constructor
+		| |- _ /\ _ => split
+		| |- RedBlack (make_black _) _ => apply make_black_is_black
+		| |- _ (match ?x with Eq => _ | Lt => _ | Gt => _ end) _ => destruct x
+		| |- _ (match ?c with Red => _ | Black => _ end) _ => destruct c
+		| |- _ (match ?t with Leaf => _ | Node _ _ _ _ => _ end) _ => destruct t
+		| H: RedBlack (Node _ _ _ _) _ |- _ => inv H
+		| H: RedBlack Leaf _ |- _ => inv H
+		| H: IsBlack (Node Red _ _ _) |- _ => inv H
+		end;
+	auto with db; try lia.
+
+Lemma RB_rrm : forall  c (l : tree T) v r (n : nat),
+	RedBlack (Node c l v r) (S n) ->
+		let (t, short) := remove_rightmost (Node c l v r) in
+		(if short then RedBlack t n else RedBlack t (S n))
+		/\ (c = Black -> IsBlack t).
+Proof.
+	intros.
+	generalize dependent n.
+	generalize dependent v.
+	generalize dependent l.
+	generalize dependent c.
+	induction r as [| c r1 _ vr r2 IH2 ]; intros.
+	- simpl. inv H.
+		+ split; auto with db.
+		+ inv H2; simpl; auto with db.
+	- inv H; subst;
+		destruct r2.
+		+ simpl. inv H6. inv H9. inv H9.
+			inv H1; inv H8; inv H4; prove_RB;
+			inv H0; inv H2; simpl; split; auto with db;
+			intro HF; inv HF.
+		+ simpl. inv H8.
+			specialize (IH2 Black r1 vr n). intuition.
+			simpl in H.
+			destruct (balance_right Black r1 vr
+			match c0 with
+			| Red =>
+				 match r2_2 with
+				 | Leaf => (r2_1, false)
+				 | Node _ _ _ _ => balance_right c0 r2_1 v0 (remove_rightmost r2_2)
+				 end
+			| Black =>
+				 match r2_2 with
+				 | Leaf => (make_black r2_1, isBlack r2_1)
+				 | Node _ _ _ _ => balance_right c0 r2_1 v0 (remove_rightmost r2_2)
+				 end
+			end).
+			destruct b.
+			* pose proof bal_right_red_true as P.
+				specialize (P l v t n).
+				intuition.
+				destruct (balance_right Red l v (t, true)).
+				split.
+				inv H0; inv H; auto with db.
+				intro HF. inv HF.
+			* inv H.
+				pose proof bal_right_red_false as P.
+				specialize (P l v t (S n)).
+				intuition.
+				destruct (balance_right Red l v (t, false)).
+				split.
+				inv H1. auto with db.
+				intro HF. inv HF.
+		+ simpl. inv H6. inv H7. inv H2; inv H4;
+			simpl; split; auto with db.
+			inv H7; inv H5; unfold make_black; unfold isBlack.
+			*	pose proof bal_right_black_true as P.
+				specialize (P l v Leaf 0). intuition.
+				assert (@RedBlack T Leaf 0) as Ha.
+				{ constructor; auto with db. } intuition. clear Ha.
+				destruct (balance_right Black l v (Leaf, true));
+				inv H2; inv H0.
+				inv H2. split; auto with db.
+				inv H1; inv H4; inv H; try split; auto with db.
+			* pose proof bal_right_black_false as P.
+				specialize (P l v (Node Black l0 v0 r) 1). intuition.
+				assert (@RedBlack T (Node Black l0 v0 r) 1) as Ha.
+				{ constructor; auto with db. } intuition. clear Ha.
+				destruct (balance_right Black l v (Node Black l0 v0 r, false)).
+				inv H5. inv H6. split; auto with db.
+		+ destruct n. inv H6. inv H7. inv H9.
+			specialize (IH2 c r1 vr n). intuition.
+			simpl in H. simpl.
+			destruct ( match c with
+			| Red | _ =>
+				 balance_right c r1 vr
+					match c0 with
+					| Red =>
+						 match r2_2 with
+						 | Leaf => (r2_1, false)
+						 | Node _ _ _ _ => balance_right c0 r2_1 v0 (remove_rightmost r2_2)
+						 end
+					| Black =>
+						 match r2_2 with
+						 | Leaf => (make_black r2_1, isBlack r2_1)
+						 | Node _ _ _ _ => balance_right c0 r2_1 v0 (remove_rightmost r2_2)
+						 end
+					end
+			end).
+			destruct b.
+			*	pose proof bal_right_black_true as P.
+				specialize (P l v t n). intuition.
+				destruct (balance_right Black l v (t, true)).
+				split.
+				inv H2; inv H3; inv H2; auto with db;
+				inv H4; inv H7; inv H; auto with db.
+				inv H3. intro. assumption.
+			* pose proof bal_right_black_false as P.
+				specialize (P l v t (S n)). intuition.
+				destruct (balance_right Black l v (t, false)).
+				inv H3. inv H4. split; auto with db.
+Qed.
+
+Lemma bal_left_red : forall l x r (b: bool) n,
+	(if b then RedBlack l n else RedBlack l (S n))
+	-> RedBlack r (S n)
+	-> IsBlack l
+	-> IsBlack r
+	-> let (t, short) := balance_left Red (l, b) x r in
+	(if short then RedBlack t n else @RedBlack T t (S n)
+	).
+Proof.
+	intros.
+	destruct b.
+	- simpl. prove_RB_bal_right.
+	- simpl. auto with db.
+Qed.
+
+Lemma bal_left_black : forall l x r (b: bool) n,
+	(if b then RedBlack l (n) else RedBlack l (S n))
+	-> RedBlack r (S n)
+	-> let (t, short) := balance_left Black (l, b) x r in
+		(if short then RedBlack t (S n) else @RedBlack T t (S (S n))).
+Proof.
+	intros.
+	destruct b.
+	- simpl. prove_RB_bal_right.
+	- simpl. auto with db.
+Qed.
+
+
+Ltac prove_RB_del :=
+	repeat
+		match goal with
+		| H: RRBlack Leaf _ |- _ => inv H
+		| H: _ (Node _ _ _ _) _ |- _ => inv H
+		| H: RedBlack Leaf _ |- _ => inv H
+		| H: IsBlack (Node Red _ _ _) |- _ => inv H
+		| H: if ?b then _ else _ |- _ => destruct b
+		| |- let (_,_) := match ?t with Leaf => _ | Node _ _ _ _ => _ end in _ => destruct t
+		| |- let (_,_) := balance_right _ _ _ (_, false) in _  => simpl
+		| |- let (_,_) := balance_right _ _ _ (match ?t with Leaf => _ | Node _ _ _ _ => _ end) in _ => destruct t
+		| |- RedBlack _ _ => constructor
+		(* | |- _ (match ?x with Eq => _ | Lt => _ | Gt => _ end) _ => destruct x
+		| |- let (_,_) := (let (_,_) := _ in if ?iS then _ else _) in _ => destruct t
+		| |- RRBlack _ _ => constructor
+		| |- _ (match ?c with Red => _ | Black => _ end) _ => destruct c
+		| |- _ (match ?t with Leaf => _ | Node _ _ _ _ => _ end) _ => destruct t *)
+		end;
+	auto with db; try lia.
+
+Theorem RB_remove: forall (t : tree T) (n : nat),
+	RedBlack t (S n) ->
+		let (t, short) := remove t in
+		if short then RedBlack t n else RedBlack t (S n).
 Proof.
 	intros.
 	induction t.
 	- auto with db.
-	- unfold ForallT. fold (@ForallT X0). repeat split.
-		+ apply H0. apply H.
-		+ apply IHt1. apply H.
-		+ apply IHt2. apply H.
+	- simpl. set (max v t1). inv H; destruct t1, t2.
+		+ assumption.
+		+ simpl. auto with db.
+		+ inv H6.
+		+ pose proof RB_rrm as P.
+			specialize (P c t1_1 v0 t1_2 n). intuition.
+			destruct (remove_rightmost (Node c t1_1 v0 t1_2)).
+			set (max v (Node c t1_1 v0 t1_2)).
+			inv H7. inv H0. intuition.
+			apply bal_left_red; assumption.
+		+ assumption.
+		+ inv H2. inv H6. inv H3; inv H5; simpl; auto with db.
+		+ inv H6. inv H2.  inv H4; inv H6.
+			* auto with db.
+			* inv H8.
+			* inv H7.
+			* inv H7.
+		+	destruct n.
+			* inv H2. inv H4; inv H7; simpl. auto with db.
+				inv H9. inv H8. inv H8.
+			*
+			pose proof RB_rrm as P.
+			specialize (P c t1_1 v0 t1_2 n). intuition.
+			destruct (remove_rightmost (Node c t1_1 v0 t1_2)).
+			inv H.
+			inv H2. inv H7. inv H10.
+			all : apply bal_left_black; assumption.
 Qed.
 
-Lemma ForallT_inv_rot : forall (P : X -> Prop) (t1 t2 : tree X),
-	rotation t1 t2 -> ForallT P t1 -> ForallT P t2.
+Theorem RB_black_bal_right : forall (l : tree T) v (r : tree T) (b : bool),
+	IsBlack (fst (balance_right Black l v (r,b))).
 Proof.
 	intros.
-	inversion H; subst.
-	- inversion H0; subst;
-	constructor; inversion H2; subst;
-	inversion H3; subst; auto with db.
-	inversion H6. split; auto with db.
-	- inversion H0; subst;
-	constructor; inversion H2; subst;
-	inversion H4; subst; auto with db.
-	inversion H6. split; auto with db.
+	destruct b. 2:simpl; auto with db.
+	unfold balance_right.
+	destruct l. simpl. auto with db.
+	destruct c. 2:destruct l1. all: destruct l2;
+	unfold fst; auto with db.
+	all: destruct c; auto with db.
+	destruct c0; auto with db.
 Qed.
 
-Lemma BST_inv_rot : forall tr1 tr2,
-	rotation tr1 tr2 -> BST tr1 -> BST tr2.
+Theorem RB_black_bal_left : forall (l : tree T) v (r : tree T) (b : bool),
+	IsBlack (fst (balance_left Black (l,b) v r)).
+Proof.
+	intros. unfold fst.
+	destruct b. 2:simpl; auto with db.
+	unfold balance_left.
+	destruct r. auto with db.
+	destruct c; destruct r1;
+	try destruct r2;
+	try destruct c; auto with db.
+	destruct c0; auto with db.
+Qed.
+
+Theorem RB_rem_black : forall (t : tree T) (n : nat),
+	RedBlack t n ->
+	IsBlack t -> IsBlack (fst (remove t)).
 Proof.
 	intros.
-		inversion H; subst; inversion H0; subst.
-		try inversion H5; subst.
-		inversion H7; subst;
-		repeat constructor; auto with db.
-		- apply ForallT_impl with (P := (fun y0 : X => cmp y y0 = true));
-			try (intro; apply (cmp_trans x y)); assumption.
-		- inversion H2. assumption.
-		(* other direction *)
-		- repeat constructor; auto with db;
-			inversion H0; subst; inversion H10; subst; inversion H12; subst;
-			inversion H2; subst; try assumption.
-			apply ForallT_impl with (P := (fun y0 : X => cmp y0 x = true)).
-			assumption. intros. apply (cmp_trans x0 x y); assumption.
+	generalize dependent n.
+	induction t; intros. auto with db.
+	inv H; intuition.
+	inv H0.
+	unfold remove.
+	destruct t1, t2; auto with db.
+	inv H6. inv H7. inv H4. inv H6. simpl. auto with db.
+	simpl. auto with db.
+	simpl. auto with db.
+	all: set (max v (Node c t1_1 v0 t1_2)).
+	inv H7. inv H6. inv H4. inv H7. simpl. auto with db.
+	destruct (remove_rightmost (Node Red Leaf v0 (Node Red l v1 r))).
+	apply RB_black_bal_left.
+	destruct (remove_rightmost (Node Red (Node Red l v1 r) v0 t1_2)).
+	apply RB_black_bal_left.
+	inv H6. destruct t1_1, t1_2.
+	simpl. auto with db.
+	destruct (remove_rightmost (Node Red Leaf v0 (Node c t1_2_1 v2 t1_2_2))).
+	apply RB_black_bal_left.
+	destruct (remove_rightmost (Node Red (Node c t1_1_1 v2 t1_1_2) v0 Leaf)).
+	apply RB_black_bal_left.
+	destruct (remove_rightmost (Node Red (Node c t1_1_1 v2 t1_1_2) v0 (Node c1 t1_2_1 v3 t1_2_2))).
+	apply RB_black_bal_left.
+	destruct (remove_rightmost (Node Black t1_1 v0 t1_2)).
+	apply RB_black_bal_left.
 Qed.
 
-(* We don't care about colour now (BST doesn't depend on color)*)
-Inductive double_rot {X : Type} : tree X -> tree X -> Prop :=
-	| rotation_left_left : forall (cx1 cy1 cz1 cx2 cy2 cz2 : colour)
-		a x b y c z d,
-		double_rot
-			(Node cz1 (Node cy1 (Node cx1 a x b) y c) z d)
-			(Node cy2 (Node cx2 a x b) y (Node cz2 c z d))
-	| rotation_left_right : forall (cx1 cy1 cz1 cx2 cy2 cz2 : colour)
-		a x b y c z d,
-		double_rot
-			(Node cz1 (Node cx1 a x (Node cy1 b y c)) z d)
-			(Node cy2 (Node cx2 a x b) y (Node cz2 c z d))
-	| rotation_right_left : forall (cx1 cy1 cz1 cx2 cy2 cz2 : colour)
-		a x b y c z d,
-		double_rot
-			(Node cx1 a x (Node cz1 (Node cy1 b y c) z d))
-			(Node cy2 (Node cx2 a x b) y (Node cz2 c z d))
-	| rotation_right_right : forall (cx1 cy1 cz1 cx2 cy2 cz2 : colour)
-		a x b y c z d,
-		double_rot
-			(Node cx1 a x (Node cy1 b y (Node cz1 c z d)))
-			(Node cy2 (Node cx2 a x b) y (Node cz2 c z d))
-			.
 
-#[local] Hint Constructors double_rot : db.
+Theorem RB_del: forall (t : tree T) (n : nat) (x : T),
+	(RedBlack t (S n) ->
+		let (t, short) := del t x in
+		if short then RedBlack t n else RedBlack t (S n))
+	/\ (RedBlack t (S n) -> IsBlack t -> IsBlack (fst (del t x))).
+Proof.
+	induction t; split; intros. inv H. unfold del. assumption.
+	- unfold del. destruct (cmp x v) eqn:cmp0.
+		+ apply RB_remove. assumption.
+		+ fold del. inv H.
+			* specialize (IHt1 n x); intuition.
+				destruct (del t1 x).
+				apply bal_left_red; assumption.
+			* 	destruct n.
+				-- inv H2; inv H6; simpl; auto with db.
+					++ destruct (cmp x v0) eqn:cmp1.
+						** inv H; inv H0; simpl; auto with db; inv H1.
+						** inv H; inv H0; simpl; auto with db; inv H1.
+						** inv H; inv H0; simpl; auto with db; inv H3.
+					++ destruct (cmp x v0) eqn:cmp1.
+						** inv H; inv H0; simpl; auto with db; inv H1.
+						** inv H; inv H0; simpl; auto with db; inv H1.
+						** inv H; inv H0; simpl; auto with db; inv H3.
+				-- specialize (IHt1 n x); intuition.
+					destruct (del t1 x).
+					apply bal_left_black; assumption.
+		+ fold del. inv H.
+			* specialize (IHt2 n x); intuition.
+				destruct (del t2 x).
+				apply bal_right_red; assumption.
+			* 	destruct n.
+				-- inv H2; inv H6; simpl; auto with db.
+					++ destruct (cmp x v0) eqn:cmp1.
+						** inv H; inv H0; simpl; auto with db; inv H1.
+						** inv H; inv H0; simpl; auto with db; inv H1.
+						** inv H; inv H0; simpl; auto with db; inv H2.
+					++ destruct (cmp x v1) eqn:cmp1.
+						** inv H2; inv H4; simpl; auto with db; inv H5.
+						** inv H2; inv H4; simpl; auto with db; inv H5.
+						** inv H2; inv H4; simpl; auto with db; inv H7.
+				-- specialize (IHt2 n x); intuition.
+					destruct (del t2 x).
+					pose proof bal_right_black as P.
+					specialize (P t1 v t b n). intuition.
+					destruct (balance_right Black t1 v (t, b)).
+					inv H3. assumption.
+	- unfold del. destruct (cmp x v) eqn:cmp0.
+		+ apply RB_rem_black in H; assumption.
+		+ fold del. inv H0.
+				destruct (del t1 x). apply RB_black_bal_left.
+		+ fold del. inv H0.
+				destruct (del t2 x). apply RB_black_bal_right.
+Qed.
 
-Lemma BST_inv_2rot : forall tr1 tr2,
-	double_rot tr1 tr2 -> BST tr1 <-> BST tr2.
+Corollary C_RB_del_1: forall (t : tree T) (n : nat) (x : T),
+	RedBlack t (S n) ->
+		let (t, short) := del t x in
+		if short then RedBlack t n else RedBlack t (S n).
 Proof.
 	intros.
-	split.
-	- intro H1.
-		induction H; subst.
-		+ apply (BST_inv_rot (Node cz1 (Node cy1 (Node cx2 a x b) y c) z d) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))).
-			constructor. inversion H1; subst.
-			apply BST_Node; auto with db.
-			apply (BST_inv_coloring (Node cy1 (Node cx1 a x b) y c)); auto with db.
-		+ apply (BST_inv_rot (Node cz1 (Node cy1 (Node cx2 a x b) y c) z d) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))).
-			constructor. inversion H1. subst.
-			apply BST_Node;
-			inversion H1; auto with db.
-			* apply (ForallT_inv_rot (fun y0 : X => cmp y0 z = true) (Node cx1 a x (Node cy1 b y c))).
-				constructor. assumption.
-			* apply (BST_inv_rot (Node cx1 a x (Node cy2 b y c))).
-				constructor.
-				apply (BST_inv_coloring (Node cx1 a x (Node cy1 b y c))); auto with db.
-		+ apply (BST_inv_rot (Node cx1 a x (Node cy1 b y (Node cz2 c z d) )) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))).
-			constructor.
-			apply BST_Node;
-			try (inversion H1; assumption);
-			inversion H1; subst.
-			* apply (ForallT_inv_rot (fun y0 : X => cmp x y0 = true) (Node cz1 (Node cy1 b y c) z d)).
-				constructor. assumption.
-			* apply (BST_inv_rot (Node cz1 (Node cy1 b y c) z d) (Node cy1 b y (Node cz2 c z d))).
-				constructor. assumption.
-		+ apply (BST_inv_rot (Node cx1 a x (Node cy1 b y (Node cz2 c z d) )) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d)));
-			constructor;
-			inversion H1; auto with db.
-			apply (BST_inv_coloring (Node cy1 b y (Node cz1 c z d))); auto with db.
-	- intro H1.
-		inversion H; subst.
-		+ apply (BST_inv_rot (Node cy1 (Node cx1 a x b) y (Node cz1 c z d))).
-			constructor.
-			apply (BST_inv_coloring (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))); auto with db.
-		+ inversion H1; subst.
-			constructor; inversion H5; inversion H6; inversion H7; inversion H8; subst; auto with db.
-			* constructor; auto with db.
-				apply (cmp_trans x y z); assumption.
-				inversion H2; inversion H4; auto with db.
-				split; auto with db. apply (ForallT_impl X (fun y0 : X => cmp y0 y = true) (fun y0 : X => cmp y0 z = true)); auto with db.
-				intros. apply (cmp_trans x0 y); auto with db.
-				constructor; auto with db. split.
-				apply (ForallT_impl X (fun y0 : X => cmp y0 y = true)); auto with db.
-				intros. apply (cmp_trans x0 y); auto with db.
-				apply (ForallT_impl X (fun y0 : X => cmp y0 z = true)); auto with db.
-			* constructor; auto with db; constructor;
-				inversion H2; inversion H4; auto with db;
-				split; auto with db;
-				apply (ForallT_impl X (fun y0 : X => cmp y y0 = true)); auto with db;
-				intros; apply (cmp_trans x y); auto with db.
-		+ inversion H1; subst.
-			constructor; inversion H5; inversion H6; inversion H7; inversion H8; subst; auto with db.
-			* constructor; auto with db.
-				apply (cmp_trans x y); auto with db.
-				inversion H2; inversion H4; auto with db.
-				split; auto with db;
-				try (constructor; try split; auto with db);
-				apply (ForallT_impl X (fun y0 : X => cmp y y0 = true)); auto with db;
-				intros; apply (cmp_trans x y ); auto with db.
-			* constructor; auto with db; constructor;
-				inversion H2; inversion H4; auto with db.
-				split; auto with db.
-				apply (ForallT_impl X (fun y0 : X => cmp y0 y = true)); auto with db.
-				intros. apply (cmp_trans x0 y); auto with db.
-		+ apply (BST_inv_rot (Node cy1 (Node cx1 a x b) y (Node cz1 c z d))).
-			constructor.
-			apply (BST_inv_coloring (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))); auto with db.
+	pose proof RB_del as P.
+	specialize (P t n x).
+	intuition.
 Qed.
 
-Ltac apply_rotation :=
-	match goal with
-	H: BST (?tr) |- _ => apply (BST_inv_2rot tr); auto with db
-	end.
-
-Lemma balance_preserve_ordering : forall tr,
-	BST tr -> BST (balance tr).
-Proof.
-	induction tr as [| c tr1 HIt1 v tr2 HIt2].
-	- auto with db.
-	- intro.
-		 destruct c. auto with db.
-		destruct tr1 as [| c1 tr11 v1 tr12];
-		auto with db;
-		destruct tr2 as [| c2 tr21 v2 tr22];
-		auto with db;
-		try destruct tr11 as [| c11 tr111 v11 tr112];
-		auto with db;
-		try destruct tr12 as [| c12 tr121 v12 tr122];
-		auto with db;
-		try destruct tr21 as [| c21 tr211 v21 tr212];
-		auto with db;
-		try destruct tr22 as [| c22 tr221 v22 tr222];
-		auto with db;
-		try destruct c1; try destruct c2;
-		auto with db;
-		try destruct c11; try destruct c12;
-		auto with db;
-		try destruct c21; try destruct c22;
-		auto with db;
-		unfold balance; auto with db;
-		apply_rotation.
-Qed.
-
-Lemma ForallT_inv_2rot : forall (P : X -> Prop) (t1 t2 : tree X),
-	double_rot t1 t2 -> ForallT P t1 <-> ForallT P t2.
+Corollary C_RB_del_2: forall (t : tree T) (n : nat) (x : T),
+	RedBlack t (S n) -> IsBlack t -> IsBlack (fst (del t x)).
 Proof.
 	intros.
-	split.
-	- intro H1.
-		induction H; subst.
-		+ apply (ForallT_inv_rot P (Node cz1 (Node cy1 (Node cx2 a x b) y c) z d) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))).
-			constructor. inversion H1; subst.
-			constructor; auto with db.
-		+ apply (ForallT_inv_rot P (Node cz1 (Node cy1 (Node cx2 a x b) y c) z d) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))).
-			constructor. inversion H1. subst.
-			constructor.
-			inversion H1; auto with db.
-			inversion H0; split; auto with db.
-			apply (ForallT_inv_rot P (Node cx1 a x (Node cy1 b y c))); auto with db.
-		+ apply (ForallT_inv_rot P (Node cx1 a x (Node cy1 b y (Node cz2 c z d) )) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d)));
-			constructor.
-			try (inversion H1; assumption);
-			inversion H1; subst.
-			inversion H1; auto with db.
-			inversion H0; split; auto with db.
-			apply (ForallT_inv_rot P (Node cz1 (Node cy1 b y c) z d)); auto with db.
-		+ apply (ForallT_inv_rot P (Node cx1 a x (Node cy1 b y (Node cz2 c z d) )) (Node cy2 (Node cx2 a x b) y (Node cz2 c z d)));
-			constructor;
-			inversion H1; auto with db.
-	- intro H1.
-		inversion H; subst.
-		+ apply (ForallT_inv_rot P (Node cy1 (Node cx1 a x b) y (Node cz1 c z d))).
-			constructor.
-			apply (ForallT_inv_coloring X P (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))); auto with db.
-		+ inversion H1; subst.
-			inversion H2; subst.
-			inversion H3; subst.
-			inversion H4; subst.
-			inversion H6; subst.
-			inversion H8; subst.
-			constructor; auto with db.
-			split; auto with db.
-			constructor; auto with db.
-		+ inversion H1; subst.
-			inversion H2; subst.
-			inversion H3; subst.
-			inversion H4; subst.
-			inversion H6; subst.
-			inversion H8; subst.
-			constructor; auto with db.
-			split; auto with db.
-			constructor; auto with db.
-		+ apply (ForallT_inv_rot P (Node cy1 (Node cx1 a x b) y (Node cz1 c z d))).
-			constructor.
-			apply (ForallT_inv_coloring X P (Node cy2 (Node cx2 a x b) y (Node cz2 c z d))); auto with db.
+	pose proof RB_del as P.
+	specialize (P t n x).
+	intuition.
 Qed.
 
-Ltac apply_Forall_rotation :=
-	match goal with
-	| H: ForallT ?P ?tr |- _ => apply (ForallT_inv_2rot P tr); auto with db
-	end.
-
-
-Lemma forall_balance : forall P (tr : tree X),
-	ForallT P tr -> ForallT P (balance tr).
+Theorem RB_delete: forall (t : tree T) (v : T),
+	@RedBlacktree T cmp t -> @RedBlacktree T cmp (delete t v) .
 Proof.
+	unfold RedBlacktree.
 	intros.
-	induction tr as [| c tr1 H1 v tr2 H2]; auto with db.
-		 destruct c. auto with db.
-		destruct tr1 as [| c1 tr11 v1 tr12];
-		auto with db;
-		destruct tr2 as [| c2 tr21 v2 tr22];
-		auto with db;
-		try destruct tr11 as [| c11 tr111 v11 tr112];
-		auto with db;
-		try destruct tr12 as [| c12 tr121 v12 tr122];
-		auto with db;
-		try destruct tr21 as [| c21 tr211 v21 tr212];
-		auto with db;
-		try destruct tr22 as [| c22 tr221 v22 tr222];
-		auto with db;
-		try destruct c1; try destruct c2;
-		auto with db;
-		try destruct c11; try destruct c12;
-		auto with db;
-		try destruct c21; try destruct c22;
-		auto with db;
-		unfold balance; auto with db;
-		apply_Forall_rotation.
+	inversion H as [ HB [[n0 H0] Hb]].
+	repeat split.
+	- apply BST_delete. assumption.
+	- unfold delete. pose proof C_RB_del_1 as P.
+			inv Hb; inversion H0; subst.
+				{ exists 0. simpl. auto with db. }
+			specialize (P (Node Black l r v0) n v). intuition.
+			destruct (del (Node Black l r v0) v).
+			destruct b.
+				{ exists n. assumption. }
+				{ exists (S n). assumption. }
+	- unfold delete. pose proof C_RB_del_2 as P.
+		inv Hb. simpl. auto with db.
+		inversion H0. subst.
+		specialize (P (Node Black l r v0) n v). intuition.
 Qed.
 
-Lemma forall_inv_insert_util_1 : forall (tr : tree X) x y,
-	ForallT (fun z : X => cmp x z = true ) tr ->
-	cmp x y = true ->
-	ForallT (fun z : X => cmp x z = true) (insert_util cmp y tr).
-Proof.
-	intros.
-	induction tr as [| c tr1 H1 v tr2 H2].
-	- unfold insert_util. auto with db.
-	- unfold insert_util. auto with db.
-		destruct (cmp y v) eqn: Hcmp; fold (insert_util cmp);
-		apply forall_balance; auto with db;
-		inversion H; subst; auto with db;
-		inversion H4; subst; auto with db;
-		constructor; auto with db.
-Qed.
-
-Lemma forall_inv_insert_util_2 : forall (tr : tree X) x y,
-	ForallT (fun z : X => cmp z x = true ) tr ->
-	cmp y x = true ->
-	ForallT (fun z : X => cmp z x = true) (insert_util cmp y tr).
-Proof.
-	intros.
-	induction tr as [| c tr1 H1 v tr2 H2].
-	- unfold insert_util. auto with db.
-	- unfold insert_util. auto with db.
-		destruct (cmp y v) eqn: Hcmp; fold (insert_util cmp);
-		apply forall_balance; auto with db;
-		inversion H; subst; auto with db;
-		inversion H4; subst; auto with db;
-		constructor; auto with db.
-Qed.
-
-
-
-Lemma insert_util_preserve_ordering : forall tr x,
-	BST tr -> BST (insert_util cmp x tr).
-Proof.
-	intros.
-	induction tr as [| c t1 H1 v t2 H2].
-	- unfold insert_util. constructor; auto with db.
-	- unfold insert_util.
-		destruct (cmp x v) eqn: Hcmp; fold (insert_util cmp x);
-		apply balance_preserve_ordering; auto with db;
-		inversion H; subst; auto with db.
-		+ constructor; auto with db.
-			apply (forall_inv_insert_util_2 t1 v x); auto with db.
-		+ apply cmp_inv in Hcmp. constructor; auto with db.
-			apply (forall_inv_insert_util_1 t2 v x); auto with db.
-Qed.
-
-Lemma insertion_preserve_ordering :	forall tr x,
-	BST tr -> BST (insertion cmp x tr) .
-Proof.
-	intros.
-	unfold insertion.
-	apply -> make_black_preserve_ordering.
-	apply insert_util_preserve_ordering.
-	assumption.
-Qed.
-
-Lemma make_black_turn_black : forall tr,
-	@IsBlack X (make_black tr).
-Proof.
-	intros.
-	destruct tr; auto with db;
-	unfold make_black; auto with db.
-Qed.
-
-Lemma pop_make_black: forall (X : Type) (P : tree X -> Prop) c l r v,
-	P (make_black (Node c l r v)) -> P (Node Black l r v).
-Proof.
-	intros.
-	destruct c; auto with db.
-Qed.
-
-Lemma insertion_preserve_black_root : forall tr x,
-	IsBlack tr -> @IsBlack X (insertion cmp x tr).
-Proof.
-	intros.
-	unfold insertion.
-	apply make_black_turn_black.
-Qed.
-
-Lemma black_inv_rotation : forall tr1 tr2,
-	rotation tr1 tr2 -> BlackProp tr1 -> @BlackProp X tr2.
-Proof.
-	intros.
-	inversion H; subst;
-	inversion H0 as [n tr H1]; subst;
-	inversion H1; subst;
-	destruct cx2; destruct cy2; auto with db;
-		apply (black_prop n);
-		constructor; auto with db;
-		inversion H7; subst; auto with db;
-		inversion H8; subst; auto with db;
-		try constructor; auto with db;
-		try (apply (black_prop_inv a n); assumption);
-		try (apply (black_prop_inv a (S n)); assumption);
-		try (apply (black_prop_inv a (S (S n))); assumption);
-		try (apply (black_prop_inv b n); assumption);
-		try (apply (black_prop_inv b (S n)); assumption);
-		try (apply (black_prop_inv b (S (S n))); assumption);
-		try (apply (black_prop_inv c n); assumption);
-		try (apply (black_prop_inv c (S n)); assumption);
-		try (apply (black_prop_inv c (S (S n))); assumption);
-		try (apply (black_prop_inv (Node Black l v r) n); assumption);
-		try (apply (black_prop_inv (Node Black l v r) (S n)); assumption);
-		try (apply (black_prop_inv (Node Black l v r) (S (S n))); assumption);
-		try (apply (black_prop_inv (Node Red l v r) n); assumption);
-		try (apply (black_prop_inv (Node Red l v r) (S n)); assumption);
-		try (apply (black_prop_inv (Node Red l v r) (S (S n))); assumption);
-		auto with db.
-Qed.
-
-Ltac apply_black_prop_inv :=
-	match goal with
-	| H: BlackProp_ ?tr ?n |- _ => apply (black_prop_inv tr n); assumption
-	end.
-
-Lemma black_inv_2rot : forall tr1 tr2,
-	double_rot tr1 tr2 -> BlackProp tr1 -> @BlackProp X tr2.
-Proof.
-	intros.
-	inversion H; subst; inversion H0 as [n tr H1]; subst;
-	auto with db.
-	- apply (black_inv_rotation (Node cz1 (Node cy1 (Node cx2 a x b)y c) z d)).
-		constructor. apply (black_prop n);
-		inversion H1; subst; auto with db;
-		constructor; auto with db;
-		inversion H7; subst; auto with db;
-		constructor; auto with db;
-		inversion H10; subst; auto with db;
-		destruct cx2;
-		constructor; auto with db;
-		inversion H9; subst; auto with db;
-		apply_black_prop_inv.
-	- apply (black_inv_rotation (Node cz1 (Node cy1 (Node cx2 a x b) y c) z d)).
-		constructor. auto with db.
-		apply (black_prop n);
-		inversion H1; subst; auto with db;
-		constructor; auto with db;
-		inversion H7; subst; auto with db;
-		inversion H10; subst; auto with db;
-		constructor; auto with db;
-		destruct cx2; try constructor; auto with db;
-		apply_black_prop_inv.
-	- apply (black_inv_rotation (Node cx1 a x (Node cy1 b y (Node cz2 c z d)))).
-		constructor. auto with db.
-		apply (black_prop n);
-		inversion H1; subst; auto with db;
-		constructor; auto with db;
-		inversion H8; subst; auto with db;
-		inversion H9; subst; auto with db;
-		constructor; auto with db;
-		destruct cz2; try constructor; auto with db;
-		apply_black_prop_inv.
-	- apply (black_inv_rotation (Node cx1 a x (Node cy1 b y (Node cz2 c z d)))).
-		constructor.
-		apply (black_prop n);
-		inversion H1; subst; auto with db;
-		constructor; auto with db;
-		inversion H7; subst; auto with db;
-		inversion H8; subst; auto with db;
-		constructor; auto with db;
-		destruct cz2;
-		constructor; auto with db;
-		try inversion H10; try inversion H12; subst; auto with db;
-		apply_black_prop_inv.
-Qed.
-
-Ltac apply_black_inv_rotation :=
-	match goal with
-	| H: BlackProp ?tr |- _ => apply (black_inv_2rot tr); auto with db
-	end.
-
-
-Lemma balance_inv_black : forall tr,
-	BlackProp tr -> @BlackProp X (balance tr).
-Proof.
-	intros.
-	induction tr as [| c tr1 H1 v tr2 H2]; auto with db;
-		 destruct c; auto with db.
-		destruct tr1 as [| c1 tr11 v1 tr12];
-		auto with db;
-		destruct tr2 as [| c2 tr21 v2 tr22];
-		auto with db;
-		try destruct tr11 as [| c11 tr111 v11 tr112];
-		auto with db;
-		try destruct tr12 as [| c12 tr121 v12 tr122];
-		auto with db;
-		try destruct tr21 as [| c21 tr211 v21 tr212];
-		auto with db;
-		try destruct tr22 as [| c22 tr221 v22 tr222];
-		auto with db;
-		try destruct c1; try destruct c2;
-		auto with db;
-		try destruct c11; try destruct c12;
-		auto with db;
-		try destruct c21; try destruct c22;
-		auto with db;
-		unfold balance; auto with db;
-		apply_black_inv_rotation; auto with db.
-Qed.
-
-Lemma black_inv_make_black : forall tr,
-	BlackProp tr <-> @BlackProp X (make_black tr).
-Proof.
-	intros.
-	destruct tr; auto with db;
-	unfold make_black; auto with db.
-	reflexivity.
-	split; intro H;
-	inversion H; subst; auto with db;
-	inversion H0; subst; auto with db;
-	apply (black_prop n);
-	try destruct c;
-	constructor; auto with db; apply_black_prop_inv.
-Qed.
-
-(* Lemma black__inv_insert_util : forall tr x n,
-	BlackProp_ tr n -> @BlackProp_ X (insert_util cmp x tr) n.
-Proof.
-	intros.
-	inversion H; subst;
-	unfold insertion.
-	constructor; auto with db.
-	unfold insert_util.
-	assumption.	 *)
-
-Lemma insertion_preserve_black : forall tr x,
-	BlackProp tr -> BlackProp (insertion cmp x tr).
-Proof.
-	intros.
-	induction tr.
-	- unfold insertion. unfold insert_util. unfold make_black.
-		apply (black_prop 0); auto with db.
-	- unfold insertion. apply -> black_inv_make_black.
-		unfold insert_util.
-		destruct (cmp x v) eqn: Hcmp; fold (insert_util cmp x).
-		+ apply balance_inv_black.
-			inversion H; subst; auto with db.
-			inversion H0; subst; auto with db;
-			apply (black_prop n); auto with db;
-			constructor; auto with db;
-			try apply (black_prop (n)) in H6;
-			try apply (black_prop (S n)) in H6;
-			apply IHtr1 in H6;
-			unfold insertion in H6;
-			apply black_inv_make_black in H6;
-			inversion H6;
-			apply_black_prop_inv.
-		+ apply balance_inv_black.
-			inversion H; subst; auto with db;
-			inversion H0; subst; auto with db;
-			apply (black_prop n); auto with db;
-			constructor; auto with db;
-			try apply (black_prop (n)) in H7;
-			try apply (black_prop (S n)) in H7;
-			apply IHtr2 in H7;
-			unfold insertion in H7;
-			apply black_inv_make_black in H7;
-			inversion H7;
-			apply_black_prop_inv.
-Qed.
-
-Lemma red_inv_black : forall (X : Type) l v r,
-	RedProp (Node Red l v r) -> @RedProp X (Node Black l v r).
-Proof.
-	intros.
-	inversion H; subst.
-	auto with db.
-Qed.
-
-Lemma red_inv_make_black : forall (X : Type) tr,
-	RedProp tr -> @RedProp X (make_black tr).
-Proof.
-	intros.
-	destruct tr; auto with db.
-	unfold make_black; auto with db.
-	inversion H; subst; auto with db.
-Qed.
-
-Lemma balance_imp_red : forall (X: Type) tr,
-	RedProp tr -> @RedProp X (balance tr).
-Proof.
-	intros.
-	induction tr as [| c tr1 H1 v tr2 H2].
-	- unfold balance. auto with db.
-	-
-		destruct c; auto with db;
-		induction tr1 as [| c1 tr11 H11 v1 tr12 H12];
-		auto with db;
-		induction tr2 as [| c2 tr21 H21 v2 tr22 H22];
-		auto with db;
-		try destruct tr11 as [| c11 tr111 v11 tr112];
-		auto with db;
-		try destruct tr12 as [| c12 tr121 v12 tr122];
-		auto with db;
-		try destruct tr21 as [| c21 tr211 v21 tr212];
-		auto with db;
-		try destruct tr22 as [| c22 tr221 v22 tr222];
-		auto with db;
-		try destruct c1; try destruct c2;
-		auto with db;
-		try destruct c11; try destruct c12;
-		auto with db;
-		try destruct c21; try destruct c22;
-		auto with db;
-		unfold balance; auto with db;
-		inversion H; subst;
-		inversion H4; subst;
-		inversion H6; subst;
-		constructor; auto with db;
-		try (apply pop_make_black with (c := Red); auto with db;
-		apply red_inv_make_black; assumption);
-		try inversion H6; subst;
-		try inversion H8; subst;
-		try inversion H10; subst;
-		try inversion H13; subst;
-		try inversion H15; subst;
-		try discriminate;
-		constructor; auto with db.
-Qed.
-
-Lemma red_inv_bal_black : forall (X : Type) tr v,
-	RedProp (tr) -> @RedProp X (make_black (balance (Node Red Leaf v tr))).
-Proof.
-	intros.
-	induction tr as [| c tr1 H1 v1 tr2 H2].
-	- unfold balance. unfold make_black. auto with db.
-	- unfold balance. unfold make_black.
-		constructor; auto with db.
-Qed.
-
-Lemma red_merge_red : forall (X : Type) l v r,
-	RedProp (l) ->
-	RedProp (r) ->
-	@RedProp X (Node Black l v r).
-Proof.
-	auto with db.
-Qed.
-
-Ltac redprop_contra :=
-	match goal with
-	| H: RedProp (Node Red (Node Red _ _ _) _ _)
-		|- _ => inversion H as [| | ? ? ? ? ? T];
-				inversion T; discriminate
-	| H: RedProp (Node Red ?l ?v (Node Red ?rl ?rv ?rr))
-		|- _ => inversion H as [| | ? ? ? ? ? ? T ];
-				inversion T; discriminate
-	end.
-
-Lemma red_merge_is_balance : forall (X : Type) tr,
-	RedProp (tr) ->
-	@RedProp X (balance tr).
-Proof.
-	intros.
-	induction tr as [| c tr1 H1 v tr2 H2].
-	- unfold balance. auto with db.
-	- inversion H; subst; auto with db.
-		apply H1 in H4 as H3. apply H2 in H7 as H5.
-		clear H1 H2. rename H4 into H1. rename H7 into H2.
-		rename H5 into H4.
-		destruct tr1; destruct tr2.
-		+ trivial.
-		+ destruct c; auto with db.
-			destruct tr2_1; destruct tr2_2.
-			* trivial.
-			* destruct c.
-				redprop_contra.
-				trivial.
-			* destruct c.
-				redprop_contra.
-				trivial.
-			* destruct c.
-				redprop_contra.
-				destruct c0.
-				redprop_contra.
-				trivial.
-		+ destruct c; auto with db.
-			destruct tr1_1; destruct tr1_2.
-			* trivial.
-			* destruct c.
-				redprop_contra.
-				trivial.
-			* destruct c.
-				redprop_contra.
-				trivial.
-			* destruct c.
-				redprop_contra.
-				destruct c0.
-				redprop_contra.
-				trivial.
-		+ destruct c; auto with db;
-			destruct c0; auto with db;
-			destruct tr1_1; destruct tr1_2;
-			destruct tr2_1; destruct tr2_2;
-			auto with db;
-			destruct c;
-			try destruct c0;
-			try destruct c1;
-			try destruct c2;
-			auto with db;
-			try redprop_contra.
-Qed.
-
-Ltac isblack_contra :=
-	match goal with
-	| H: IsBlack (Node Red _ _ _)
-		|- _ => inversion H; discriminate
-	end.
-
-Example test : forall (X : Type) l v r,
-	@IsBlack X (Node Red l v r) -> False.
-Proof.
-	intros.
-	isblack_contra.
-Qed.
-
-
-(* Okasaki case 1 *)
-Lemma red_inv_balance_1 : forall (X : Type) a x b y c z d,
-	RedProp a -> RedProp b -> RedProp c -> RedProp d ->
-	@RedProp X (balance
-		(Node Black
-			(Node Red (Node Red a x b) y c) z d)).
-Proof.
-	unfold balance.
-	auto with db.
-Qed.
-
-(* Okasaki case 2 *)
-Lemma red_inv_balance_2 : forall (X : Type) a x b y c z d,
-	RedProp a -> IsBlack a -> RedProp b -> RedProp c -> RedProp d ->
-	@RedProp X (balance
-		(Node Black
-			(Node Red a x (Node Red b y c)) z d)).
-Proof.
-	intros.
-	destruct a; try destruct c0;
-	try isblack_contra;
-	unfold balance; auto with db.
-Qed.
-
-(* Okasaki case 3 *)
-Lemma red_inv_balance_3 : forall (X : Type) a x b y c z d,
-	RedProp a -> IsBlack a -> RedProp b -> RedProp c -> RedProp d ->
-	@RedProp X (balance
-		(Node Black
-			a x (Node Red (Node Red b y c) z d))).
-Proof.
-	intros.
-	destruct a; try destruct c0;
-	try isblack_contra;
-	unfold balance; auto with db.
-Qed.
-
-(* Okasaki case 4 *)
-Lemma red_inv_balance_4 : forall (X : Type) a x b y c z d,
-	RedProp a -> IsBlack a -> RedProp b -> IsBlack b -> RedProp c -> RedProp d ->
-	@RedProp X (balance
-		(Node Black
-			a x (Node Red b y (Node Red c z d)))).
-Proof.
-	intros.
-	destruct a; try destruct c0;
-	try isblack_contra;
-	destruct b; try destruct c0;
-	try isblack_contra;
-	unfold balance; auto with db.
-Qed.
-
-(* Lemma toto : forall (X : Type) (tr : tree X) v,
-	RedProp (Node Red Leaf v (balance tr)) ->
-	@RedProp X (make_black (balance (Node Red Leaf v tr))).
-Proof.
-	intros.
-	induction tr as [| c tr1 H1 v1 tr2 H2].
-	- unfold balance. unfold make_black. auto with db.
-	- destruct tr1; destruct tr2;
-		destruct c; try destruct c0; try destruct c1;
-		try (unfold balance in H; redprop_contra);
-		auto with db;
-		unfold balance; unfold make_black; auto with db;
-		try destruct tr1_1; try destruct tr1_2;
-		try destruct tr2_1; try destruct tr2_2;
-		try destruct c; try destruct c0; try destruct c1; try destruct c2;
-		try (unfold balance in H; redprop_contra);
-		auto with db;
-		unfold balance in H;
-		inversion H; subst; auto with db.
-Qed.
-
-
-Lemma red_inv_merge : forall (X : Type) tr1 v tr2 v0 tr,
-	RedProp tr1 ->
-	IsBlack tr1 ->
-	RedProp tr2 ->
-	IsBlack tr2 ->
-	RedProp (balance (Node Black tr1 v0 tr)) ->
-	RedProp (balance (Node Black tr2 v0 tr)) ->
-	@RedProp X (balance (Node Red (Node Black tr1 v tr2) v0 tr)).
-Proof.
-	intros.
-	induction tr.
-		+ destruct tr1; destruct tr2;
-			try destruct c; try destruct c0;
-			unfold balance; auto with db;
-			unfold balance in H; unfold balance in H0;
-			auto with db;
-			try redprop_contra;
-			inversion H; subst; auto with db;
-			inversion H0; subst; auto with db;
-			inversion H2; subst; discriminate.
-		+ unfold balance. constructor; auto with db.
-	- destruct c; destruct c0;
-		induction tr1; induction tr2;
-			induction tr3; induction tr4;
-			try destruct c; try destruct c0;
-			try destruct c1; try destruct c2;
-			try isblack_contra;
-			try redprop_contra;
-			unfold balance; auto with db;
-			unfold balance in H3; unfold balance in H4;
-			inversion H3; subst; auto with db;
-			inversion H4; subst; auto with db;
-			constructor; auto with db.
-Qed.
-
-Theorem tata : forall (X : Type) tr1 v c2 tr2_1 v2 tr2_2  ,
-	RedProp tr1 ->
-	RedProp (balance (Node Black tr2_1 v tr2_2)) ->
-	@RedProp X (balance (Node Black tr1 v (balance (Node c2 tr2_1 v2 tr2_2)))).
-Proof.
-	intros X.
-	induction tr1.
-	- intros. destruct c2 eqn: Hc2.
-		+ 	destruct tr2_1; destruct tr2_2;
-			try destruct c; try destruct c0;
-			try redprop_contra;
-			unfold balance;
-			auto with db.
-		+ 	destruct tr2_1; destruct tr2_2;
-			try destruct tr2_1_1; try destruct tr2_1_2;
-			try destruct tr2_2_1; try destruct tr2_2_2;
-			try destruct c; try destruct c0; try destruct c1;
-			try destruct c2; try destruct c3; try destruct c4;
-			try destruct c5;
-			try redprop_contra;
-			unfold balance; auto with db.
-	- intros.
-		inversion H; subst;
-		apply red_inv_merge; auto with db.
-Admitted. *)
-
-Theorem red_inv_insert_until : forall tr1 v tr2 x,
-	RedProp (tr1) ->
-	RedProp (tr2) ->
-	RedProp (insert_util cmp x (Node Black tr1 v tr2)) .
-Proof.
-	Admitted.
-
-Theorem inversion_preserve_red : forall tr x,
-	RedProp tr -> RedProp (insertion cmp x tr) .
-Proof.
-	intros.
-	induction tr as [| c tr1 IH1 v tr2 IH2].
-	- unfold insertion. apply red_inv_make_black.
-		constructor; auto with db.
-	- induction tr1 as [| c1 tr11 H11 v1 tr12 H12].
-		(* Left is empty *)
-		+ induction tr2 as [| c2 tr21 H21 v2 tr22 H22].
-			(* Both are empty *)
-			* unfold insertion. unfold insert_util.
-				destruct (cmp x v) eqn: Hcmp;
-				unfold balance; destruct c;
-				auto with db; unfold make_black;
-				auto with db.
-			(* Right is non empty *)
-			* unfold insertion. unfold insert_util.
-				fold (insert_util cmp x).
-				destruct (cmp x v) eqn: Hcmp.
-				(* inserion to the left *)
-				-- destruct c.
-					++ unfold balance; unfold make_black.
-						inversion H.
-						constructor; auto with db.
-					++ destruct c2;
-							destruct tr21; destruct tr22;
-							try destruct c; try destruct c0;
-							try redprop_contra;
-							unfold balance; unfold make_black;
-							auto with db;
-							inversion H; subst;
-							inversion H4; subst;
-							try inversion H5; subst;
-							inversion H6; subst;
-							auto with db.
-				(* insertion to the right *)
-				-- destruct (cmp x v2) eqn: Hcmp2.
-					(*insertion to the left of the right *)
-					++ destruct c; destruct c2.
-						** destruct tr21; destruct tr22;
-							try destruct c; try destruct c0;
-							try redprop_contra;
-							unfold balance; unfold make_black;
-							auto with db;
-							inversion H; subst;
-							inversion H4; subst;
-							try inversion H5; subst;
-							inversion H6; subst;
-							auto with db.
-						** destruct tr21; destruct tr22;
-							try destruct c; try destruct c0;
-							try redprop_contra;
-							try isblack_contra;
-							unfold balance at 1.
-							auto with db;
-							inversion H; subst;
-							inversion H4; subst;
-							try inversion H5; subst;
-							inversion H6; subst;
-							auto with db.
-
-						unfold balance; unfold make_black.
-						inversion H.
-						constructor; auto with db.
-
-					auto with db; unfold make_black;
-					auto with db.
-				unfold balance; destruct c;
-				auto with db; unfold make_black;
-				auto with db.
-			* unfold insertion.
-			* inversion H; subst.
-				apply red_inv_balance_1; auto with db.
-			(* insert to the right *)
-			destruct c; auto with db;
-			unfold balance;
-			unfold make_black;
-			constructor; auto with db.
-		+ unfold insertion. unfold insert_util.
-			fold (insert_util cmp x).
-			destruct (cmp x v) eqn: Hcmp;
-			destruct c eqn: HC;
-			destruct c2 eqn: HC2.
-			*	inversion H; subst; auto with db;
-				inversion H6; subst; auto with db;
-				discriminate.
-			* unfold balance; unfold make_black.
-				constructor; auto with db.
-				inversion H; subst; auto with db.
-			* inversion H; subst; auto with db.
-				apply red_inv_make_black.
-				apply red_merge_is_balance.
-				constructor; auto with db.
-			* inversion H; subst; auto with db.
-				unfold balance; unfold make_black.
-				constructor; auto with db.
-			* redprop_contra.
-			* unfold balance at 1. unfold make_black.
-				apply IH2 in H4.
-				unfold insertion in H4.	unfold insert_util in H4.
-				fold (insert_util cmp x) in H4.
-				destruct (cmp x v2) eqn: Hcmp2;
-				apply toto; auto with db.
-
-Qed.
-
-
-Theorem insertion_preserve_rbtree : forall tr v,
-	red_black tr -> red_black (insertion cmp v tr).
-Proof.
-	intros.
-	destruct H.
-	destruct H0.
-	destruct H1.
-	repeat constructor.
-	- apply insertion_preserve_ordering. assumption.
-	- apply insertion_preserve_black_root. assumption.
-	- apply inversion_preserve_red. assumption.
-	- apply insertion_preserve_black. assumption.
-Qed.
